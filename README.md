@@ -1,6 +1,20 @@
-# Learner API SDK
+# Path Learner API SDK
 
-A fully typesafe TypeScript SDK for interacting with the Learner API.
+A fully typesafe TypeScript SDK for integrating custom course websites with **Path**, the patient tracking software used by VCH (Vancouver Coastal Health).
+
+## What is this SDK?
+
+This SDK enables custom course websites to:
+- **Authenticate learners** through Path's authentication system
+- **Track user progress** on a per-learner, per-course basis
+- **Submit progress updates** when learners complete milestones
+- **Retrieve enrollment data** and historical progress records
+
+**One SDK instance per course** - Each course website creates a single `pathSDK` instance configured with that course's ID. The SDK handles all communication with Path's backend to sync learner progress.
+
+## Use Case
+
+VCH uses Path to track patient care training across multiple custom course websites. When a healthcare professional completes a training module on your custom course website, this SDK reports that progress back to Path's centralized tracking system. This allows VCH to monitor training compliance and progress across their entire organization.
 
 ## Features
 
@@ -21,10 +35,11 @@ npm install learner-api-sdk
 ```typescript
 import { pathSDK } from 'learner-api-sdk';
 
-// Create the API instance
+// Create one SDK instance per course
+// This connects your course website to Path's tracking system
 const path = pathSDK({
-  courseId: 1,
-  callbackUrl: 'http://localhost:5500'
+  courseId: 1,                              // Your course's ID in Path
+  callbackUrl: 'http://localhost:5500'      // Where to redirect after login
 });
 
 // Check authentication status
