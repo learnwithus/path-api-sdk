@@ -23,7 +23,7 @@ export { apiRequest } from './fetch-helper.js';
  * ```
  */
 export function pathSDK(config: LearnerAPIConfig) {
-  const baseUrl = config.baseUrl || 'http://localhost:3000';
+  const baseUrl = config.baseUrl || 'https://path.vchlearn.ca';
   const callbackUrl = config.callbackUrl || (typeof window !== 'undefined' ? window.location.href : '');
   const courseId = config.courseId;
 

@@ -4,6 +4,7 @@ let isAuthenticated = false;
 
 // Create SDK instance
 const path = pathSDK({
+    baseUrl: 'http://localhost:3000',
     courseId: parseInt((document.getElementById('progressCourseId') as HTMLInputElement).value),
     callbackUrl: 'http://localhost:5500'
 });
