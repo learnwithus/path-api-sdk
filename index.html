@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Enrollment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f4f4f4;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .success,
+        .error {
+            padding: 1.25em 1.3em;
+            border-radius: 4px;
+        }
+
+        input {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        select,
+        textarea {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+
+        textarea {
+            width: 400px;
+            height: 100px;
+            vertical-align: top;
+        }
+
+        .hint {
+            color: #666;
+            font-size: 14px;
+            margin-left: 130px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Learner API Tester</h1>
+
+    <div class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0;">Authentication Status</h2>
+            <div id="authButtons"></div>
+        </div>
+        <div id="authStatus">Checking authentication...</div>
+    </div>
+
+    <div class="section">
+        <h2>User Enrollment & Progress</h2>
+        <div class="form-group">
+            <label for="progressCourseId">Course ID:</label>
+            <input type="number" id="progressCourseId" placeholder="Enter course ID" value="1">
+            <button id="loadProgressBtn" onclick="loadUserProgress()">Load Enrollment & Progress</button>
+        </div>
+        <div id="progressDisplay"></div>
+    </div>
+
+    <div class="section">
+        <h2>Submit Progress</h2>
+        <div class="form-group">
+            <label for="milestoneId">Milestone ID:</label>
+            <input type="number" id="milestoneId" placeholder="Enter milestone ID" value="">
+        </div>
+        <div class="form-group">
+            <label for="progressValue">Value:</label>
+            <input type="text" id="progressValue" placeholder='true, 42, "text", ["a","b"], {"key":"val"}'
+                style="width: 400px;">
+            <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string.</div>
+        </div>
+        <div class="form-group">
+            <button id="submitProgressBtn" onclick="submitProgress()">Submit Progress</button>
+        </div>
+        <div id="progressResult"></div>
+    </div>
+
+    <script type="module">
+        import { pathAPI } from './learner-api-sdk/dist/index.js';
+
+        let isAuthenticated = false;
+
+        // Create API instance (Better Auth style)
+        const path = pathAPI({
+            courseId: parseInt(document.getElementById('progressCourseId').value),
+            callbackUrl: 'http://localhost:5500'
+        });
+
+        async function checkAuth() {
+            const authStatusDiv = document.getElementById('authStatus');
+            const authButtonsDiv = document.getElementById('authButtons');
+
+            const authStatus = await path.checkAuth();
+
+            if (authStatus.isAuthenticated && authStatus.enrollment) {
+                isAuthenticated = true;
+                authStatusDiv.className = 'success';
+                authStatusDiv.innerHTML = `
+<strong>✓ Logged in</strong><br>
+- User ID: ${authStatus.enrollment.user.id}<br>
+- Email: ${authStatus.enrollment.user.email || 'N/A'}<br>
+- Enrolled in Course: ${authStatus.enrollment.course.title}<br>
+                `.trim();
+
+                authButtonsDiv.innerHTML = '<button onclick="logout()">Logout</button>';
+            } else {
+                isAuthenticated = false;
+                authStatusDiv.className = 'error';
+                authStatusDiv.textContent = '✗ Not logged in';
+                authButtonsDiv.innerHTML = '<button onclick="login()">Login</button>';
+            }
+        }
+
+        function login() {
+            path.login();
+        }
+
+        async function logout() {
+            try {
+                await path.logout();
+                await checkAuth();
+                document.getElementById('progressDisplay').innerHTML = '';
+                alert('Logged out successfully');
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Failed to logout: ' + error.message);
+            }
+        }
+
+        async function loadUserProgress() {
+            const btn = document.getElementById('loadProgressBtn');
+            const resultDiv = document.getElementById('progressDisplay');
+            const courseId = document.getElementById('progressCourseId').value;
+
+            if (!courseId) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Please enter a course ID';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            resultDiv.textContent = 'Loading user progress...';
+            resultDiv.className = '';
+
+            try {
+                const info = await path.getEnrollmentAndProgress();
+
+                // Display enrollment and progress
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+<strong>✓ Enrollment & Progress Loaded</strong>
+
+<strong>Full Response:</strong>
+<pre>${JSON.stringify(info, null, 2)}</pre>
+                `.trim();
+
+                console.log('Enrollment & progress:', info);
+
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+<strong>✗ Error:</strong> ${error.message}
+
+This could mean:
+- You're not signed in
+- You're not enrolled in course ${courseId}
+- The course doesn't exist
+                `.trim();
+                console.error('Failed to load progress:', error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Load Progress';
+            }
+        }
+
+        async function submitProgress() {
+            const btn = document.getElementById('submitProgressBtn');
+            const resultDiv = document.getElementById('progressResult');
+            const courseId = document.getElementById('progressCourseId').value;
+            const milestoneId = document.getElementById('milestoneId').value;
+            const valueInput = document.getElementById('progressValue').value;
+
+            // Validate inputs
+            if (!courseId) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Please enter a course ID';
+                return;
+            }
+
+            if (!milestoneId) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Please enter a milestone ID';
+                return;
+            }
+
+            if (valueInput === '') {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Please enter a value';
+                return;
+            }
+
+            // Parse value using SDK utility
+            const parsedValue = path.parseValue(valueInput);
+
+            // Disable button and show loading state
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+            resultDiv.textContent = 'Submitting progress...';
+            resultDiv.className = '';
+
+            try {
+                const result = await path.submitProgress(parseInt(milestoneId), parsedValue);
+
+                // Display the results
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+<strong>✓ Progress submitted successfully!</strong>
+
+<strong>Progress Details:</strong>
+- Progress ID: ${result.progress.id}
+- User ID: ${result.progress.userId}
+- Milestone ID: ${result.progress.courseMilestoneId}
+- Value: ${result.progress.value}
+- Created: ${new Date(result.progress.createdAt).toLocaleString()}
+
+<strong>Full Response:</strong>
+<pre>${JSON.stringify(result, null, 2)}</pre>
+        `.trim();
+
+                console.log('Progress submitted:', result);
+
+                // Reload progress after successful submission
+                await loadUserProgress();
+
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+<strong>✗ Error:</strong> ${error.message}
+
+This could mean:
+- You're not signed in
+- You're not enrolled in course ${courseId}
+- The milestone ID ${milestoneId} doesn't exist
+- The milestone doesn't belong to this course
+- The value type doesn't match the milestone's expected type
+- CORS origin mismatch
+        `.trim();
+                console.error('Failed to submit progress:', error);
+            } finally {
+                // Re-enable button
+                btn.disabled = false;
+                btn.textContent = 'Submit Progress';
+            }
+        }
+
+        // Expose functions globally for onclick handlers
+        window.checkAuth = checkAuth;
+        window.login = login;
+        window.logout = logout;
+        window.loadUserProgress = loadUserProgress;
+        window.submitProgress = submitProgress;
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkAuth();
+            if (isAuthenticated) {
+                await loadUserProgress();
+            }
+        });
+    </script>
+</body>
+
+</html>
