@@ -3,15 +3,19 @@ import { pathSDK } from '../src/index';
 let isAuthenticated = false;
 
 // Create SDK instance
-const path = pathSDK({
-    baseUrl: 'http://localhost:3000',
-    courseId: parseInt((document.getElementById('progressCourseId') as HTMLInputElement).value),
-    callbackUrl: 'http://localhost:5500'
-});
+function createPathSDKInstance() {
+    return pathSDK({
+        baseUrl: 'http://localhost:3000',
+        courseId: parseInt((document.getElementById('progressCourseId') as HTMLInputElement).value),
+        callbackUrl: 'http://localhost:5500'
+    });
+}
 
 async function checkAuth() {
     const authStatusDiv = document.getElementById('authStatus')!;
     const authButtonsDiv = document.getElementById('authButtons')!;
+
+    const path = createPathSDKInstance();
 
     const authStatus = await path.checkAuth();
 
@@ -35,11 +39,14 @@ async function checkAuth() {
 }
 
 function login() {
+    const path = createPathSDKInstance();
     path.login();
 }
 
 async function logout() {
     try {
+        const path = createPathSDKInstance();
+
         await path.logout();
         await checkAuth();
         document.getElementById('progressDisplay')!.innerHTML = '';
@@ -54,6 +61,7 @@ async function loadUserProgress() {
     const btn = document.getElementById('loadProgressBtn') as HTMLButtonElement;
     const resultDiv = document.getElementById('progressDisplay')!;
     const courseId = (document.getElementById('progressCourseId') as HTMLInputElement).value;
+    console.log(courseId)
 
     if (!courseId) {
         resultDiv.className = 'error';
@@ -67,6 +75,8 @@ async function loadUserProgress() {
     resultDiv.className = '';
 
     try {
+        const path = createPathSDKInstance();
+
         const info = await path.getEnrollmentAndProgress();
 
         // Display enrollment and progress
@@ -138,6 +148,8 @@ async function submitProgress() {
     resultDiv.className = '';
 
     try {
+        const path = createPathSDKInstance();
+
         const result = await path.submitProgress(parseInt(milestoneId), parsedValue);
 
         // Display the results
