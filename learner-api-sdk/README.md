@@ -19,10 +19,10 @@ npm install learner-api-sdk
 ## Quick Start
 
 ```typescript
-import { pathAPI } from 'learner-api-sdk';
+import { pathSDK } from 'learner-api-sdk';
 
 // Create the API instance
-const path = pathAPI({
+const path = pathSDK({
   courseId: 1,
   callbackUrl: 'http://localhost:5500'
 });
@@ -43,7 +43,7 @@ await path.submitProgress(1, true);
 
 ## API Reference
 
-### pathAPI(config)
+### pathSDK(config)
 
 Create a new Path API instance.
 
@@ -54,7 +54,7 @@ Create a new Path API instance.
 
 **Example:**
 ```typescript
-const path = pathAPI({
+const path = pathSDK({
   courseId: 1,
   baseUrl: 'https://api.example.com',
   callbackUrl: 'https://example.com/callback'
@@ -174,26 +174,13 @@ await api.submitProgress(4, ["item1", "item2"]);
 await api.submitProgress(5, { score: 95, completed: true });
 ```
 
-### Static Methods
-
-#### `LearnerAPI.parseValue(input: string): MilestoneValue`
-
-Parse value from string input. Attempts to parse as JSON first, falls back to string.
-
-**Example:**
-```typescript
-const value1 = LearnerAPI.parseValue('true');        // boolean: true
-const value2 = LearnerAPI.parseValue('42');          // number: 42
-const value3 = LearnerAPI.parseValue('["a","b"]');  // array: ["a","b"]
-const value4 = LearnerAPI.parseValue('hello');       // string: "hello"
-```
-
 ## TypeScript Types
 
 All types are exported for your convenience:
 
 ```typescript
 import type {
+  PathSDKInstance,
   User,
   Course,
   Progress,
@@ -204,6 +191,9 @@ import type {
   LearnerAPIConfig,
   APIError
 } from 'learner-api-sdk';
+
+// Example: Type the API instance
+const path: PathSDKInstance = pathSDK({ courseId: 1 });
 ```
 
 ## Browser Usage
@@ -212,9 +202,9 @@ For browser usage without a build step:
 
 ```html
 <script type="module">
-  import { LearnerAPI } from './path/to/learner-api-sdk/dist/index.js';
+  import { pathSDK } from './path/to/learner-api-sdk/dist/index.js';
 
-  const api = new LearnerAPI({ courseId: 1 });
+  const path = pathSDK({ courseId: 1 });
   // ... use the API
 </script>
 ```

@@ -5,10 +5,10 @@
 Create a single instance and use it throughout your app:
 
 ```typescript
-import { pathAPI } from 'learner-api-sdk';
+import { pathSDK } from 'learner-api-sdk';
 
 // Create the API instance once
-export const path = pathAPI({
+export const path = pathSDK({
   courseId: 1,
   callbackUrl: 'http://localhost:5500'
 });
@@ -17,9 +17,6 @@ export const path = pathAPI({
 const authStatus = await path.checkAuth();
 const enrollment = await path.getEnrollmentAndProgress();
 await path.submitProgress(1, true);
-
-// Utilities are also available
-const value = path.parseValue('{"key": "value"}');
 ```
 
 ### Benefits
@@ -31,10 +28,10 @@ const value = path.parseValue('{"key": "value"}');
 
 ## API Reference
 
-### pathAPI Configuration
+### pathSDK Configuration
 
 ```typescript
-const path = pathAPI({
+const path = pathSDK({
   courseId: number,           // Required: The course ID
   baseUrl?: string,           // Optional: API base URL (default: http://localhost:3000)
   callbackUrl?: string        // Optional: Login redirect URL (default: current page)
@@ -87,40 +84,13 @@ await path.submitProgress(2, 'Completed');
 await path.submitProgress(3, { score: 95 });
 ```
 
-### Utilities
-
-#### `path.parseValue(input: string)`
-Parse JSON values from strings.
-
-```typescript
-const bool = path.parseValue('true');        // boolean
-const num = path.parseValue('42');           // number
-const arr = path.parseValue('["a","b"]');    // array
-const obj = path.parseValue('{"key":"val"}'); // object
-const str = path.parseValue('plain text');   // string (fallback)
-```
-
-#### `path.getCourseId()`
-Get the current course ID.
-
-```typescript
-const courseId = path.getCourseId();
-```
-
-#### `path.getBaseUrl()`
-Get the configured base URL.
-
-```typescript
-const baseUrl = path.getBaseUrl();
-```
-
 ## TypeScript Types
 
 All types are exported:
 
 ```typescript
 import type {
-  PathAPIInstance,
+  PathSDKInstance,
   Enrollment,
   Progress,
   User,
@@ -137,9 +107,9 @@ import type {
 
 ```tsx
 // api/path.ts
-import { pathAPI } from 'learner-api-sdk';
+import { pathSDK } from 'learner-api-sdk';
 
-export const path = pathAPI({
+export const path = pathSDK({
   courseId: parseInt(process.env.COURSE_ID),
   callbackUrl: window.location.origin
 });
@@ -171,9 +141,9 @@ export function useAuth() {
 
 ```html
 <script type="module">
-  import { pathAPI } from './learner-api-sdk/dist/index.js';
+  import { pathSDK } from './learner-api-sdk/dist/index.js';
 
-  const path = pathAPI({
+  const path = pathSDK({
     courseId: 1,
     callbackUrl: window.location.href
   });
@@ -191,8 +161,16 @@ export function useAuth() {
 
   // Submit progress
   document.querySelector('#submit-btn').onclick = async () => {
-    const milestoneId = document.querySelector('#milestone').value;
-    const value = path.parseValue(document.querySelector('#value').value);
+    const milestoneId = parseInt(document.querySelector('#milestone').value);
+    const valueInput = document.querySelector('#value').value;
+
+    // Try to parse as JSON, fallback to string
+    let value;
+    try {
+      value = JSON.parse(valueInput);
+    } catch {
+      value = valueInput;
+    }
 
     await path.submitProgress(milestoneId, value);
     alert('Progress submitted!');

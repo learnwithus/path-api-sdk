@@ -11,21 +11,18 @@ export * from './types.js';
 export { apiRequest } from './fetch-helper.js';
 
 /**
- * Factory function to create a Path API instance
+ * Factory function to create a Path SDK instance
  *
  * @example
  * ```typescript
- * export const path = pathAPI({ courseId: 1 });
+ * export const path = pathSDK({ courseId: 1 });
  *
- * // Use the API
+ * // Use the SDK
  * const auth = await path.checkAuth();
  * await path.submitProgress(1, true);
- *
- * // Or use utilities
- * const value = path.parseValue('{"key": "value"}');
  * ```
  */
-export function pathAPI(config: LearnerAPIConfig) {
+export function pathSDK(config: LearnerAPIConfig) {
   const baseUrl = config.baseUrl || 'http://localhost:3000';
   const callbackUrl = config.callbackUrl || (typeof window !== 'undefined' ? window.location.href : '');
   const courseId = config.courseId;
@@ -95,36 +92,15 @@ export function pathAPI(config: LearnerAPIConfig) {
         }
       );
     },
-
-    /**
-     * Parse value from string input
-     */
-    parseValue: (input: string): MilestoneValue => {
-      try {
-        return JSON.parse(input);
-      } catch {
-        return input;
-      }
-    },
-
-    /**
-     * Get the current course ID
-     */
-    getCourseId: () => courseId,
-
-    /**
-     * Get the base URL
-     */
-    getBaseUrl: () => baseUrl,
   };
 }
 
 /**
- * Type for the return value of pathAPI
+ * Type for the return value of pathSDK
  */
-export type PathAPIInstance = ReturnType<typeof pathAPI>;
+export type PathSDKInstance = ReturnType<typeof pathSDK>;
 
 /**
  * Default export for convenience
  */
-export default pathAPI;
+export default pathSDK;
