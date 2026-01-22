@@ -1,6 +1,6 @@
 {
   "name": "@vch-lt/path",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "TypeScript SDK for integrating custom course websites with Path patient tracking software (VCH)",
   "main": "dist/index.js",
   "module": "dist/index.js",
