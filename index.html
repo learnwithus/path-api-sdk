@@ -5,48 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learner API SDK Tester</title>
-    <link rel="stylesheet" href="./dev/styles.css">
 </head>
 
 <body>
-    <h1>Learner API Tester</h1>
-
-    <div class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin: 0;">Authentication Status</h2>
-            <div id="authButtons"></div>
-        </div>
-        <div id="authStatus">Checking authentication...</div>
-    </div>
-
-    <div class="section">
-        <h2>User Enrollment & Progress</h2>
-        <div class="form-group">
-            <label for="progressCourseId">Course ID:</label>
-            <input type="number" id="progressCourseId" placeholder="Enter course ID" value="1">
-            <button id="loadProgressBtn" onclick="loadUserProgress()">Load Enrollment & Progress</button>
-        </div>
-        <div id="progressDisplay"></div>
-    </div>
-
-    <div class="section">
-        <h2>Submit Progress</h2>
-        <div class="form-group">
-            <label for="milestoneId">Milestone ID:</label>
-            <input type="number" id="milestoneId" placeholder="Enter milestone ID" value="">
-        </div>
-        <div class="form-group">
-            <label for="progressValue">Value:</label>
-            <input type="text" id="progressValue" placeholder='true, 42, "text", ["a","b"], {"key":"val"}'
-                style="width: 400px;">
-            <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string.</div>
-        </div>
-        <div class="form-group">
-            <button id="submitProgressBtn" onclick="submitProgress()">Submit Progress</button>
-        </div>
-        <div id="progressResult"></div>
-    </div>
-
+    <div id="app"></div>
     <script type="module" src="./dev/dev-app.ts"></script>
 </body>
 

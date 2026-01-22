@@ -1,12 +1,14 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
+  plugins: [vue()],
   // Build configuration for library mode
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
-      name: 'LearnerAPISDK',
+      name: 'PathSDK',
       formats: ['es'],
       fileName: (format) => `index.js`
     },
@@ -14,8 +16,6 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {
-      // Make sure to externalize deps that shouldn't be bundled
-      external: [],
       output: {
         // Preserve the exports structure
         preserveModules: false,
