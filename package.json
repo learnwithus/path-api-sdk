@@ -1,6 +1,6 @@
 {
-  "name": "learner-api-sdk",
-  "version": "1.0.0",
+  "name": "@vch-lt/path",
+  "version": "0.1.1",
   "description": "TypeScript SDK for integrating custom course websites with Path patient tracking software (VCH)",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -26,7 +26,15 @@
     "sdk",
     "typescript"
   ],
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/learnwithus/path-api-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/learnwithus/path-api-sdk/issues"
+  },
+  "homepage": "https://github.com/learnwithus/path-api-sdk#readme",
+  "author": "Learn With Us",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^25.0.3",

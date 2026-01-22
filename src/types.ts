@@ -59,7 +59,7 @@ export interface SubmitProgressResponse {
 export type MilestoneValue = boolean | string | number | unknown[] | Record<string, unknown>;
 
 /**
- * Configuration options for LearnerAPI
+ * Configuration options for Path SDK
  */
 export interface LearnerAPIConfig {
   /**
@@ -68,14 +68,14 @@ export interface LearnerAPIConfig {
   courseId: number;
 
   /**
-   * Base URL for the API (default: http://localhost:3000)
+   * Path backend URL (default: https://path.vchlearn.ca)
    */
-  baseUrl?: string;
+  pathUrl?: string;
 
   /**
-   * Callback URL for login redirects (default: current page)
+   * Your course website URL for login redirects
    */
-  callbackUrl?: string;
+  courseUrl: string;
 }
 
 /**

@@ -23,8 +23,8 @@ export { apiRequest } from './fetch-helper.js';
  * ```
  */
 export function pathSDK(config: LearnerAPIConfig) {
-  const baseUrl = config.baseUrl || 'https://path.vchlearn.ca';
-  const callbackUrl = config.callbackUrl || (typeof window !== 'undefined' ? window.location.href : '');
+  const pathUrl = config.pathUrl || 'https://path.vchlearn.ca';
+  const courseUrl = config.courseUrl;
   const courseId = config.courseId;
 
   return {
@@ -34,7 +34,7 @@ export function pathSDK(config: LearnerAPIConfig) {
     checkAuth: async (): Promise<AuthStatus> => {
       try {
         const enrollment = await apiRequest<Enrollment>(
-          `${baseUrl}/api/learner?courseId=${courseId}`
+          `${pathUrl}/api/learner?courseId=${courseId}`
         );
         return {
           isAuthenticated: true,
@@ -50,9 +50,9 @@ export function pathSDK(config: LearnerAPIConfig) {
     /**
      * Redirect to login page
      */
-    login: (overrideCallbackUrl?: string): void => {
-      const callback = encodeURIComponent(overrideCallbackUrl || callbackUrl);
-      window.location.href = `${baseUrl}/learner-login?courseId=${courseId}&callbackUrl=${callback}`;
+    login: (callbackUrl?: string): void => {
+      const callback = encodeURIComponent(callbackUrl || courseUrl);
+      window.location.href = `${pathUrl}/learner-login?courseId=${courseId}&callbackUrl=${callback}`;
     },
 
     /**
@@ -60,7 +60,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      */
     logout: async (): Promise<void> => {
       await apiRequest(
-        `${baseUrl}/api/learner/logout?courseId=${courseId}`,
+        `${pathUrl}/api/learner/logout?courseId=${courseId}`,
         { method: 'POST' }
       );
     },
@@ -70,7 +70,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      */
     getEnrollmentAndProgress: async (): Promise<Enrollment> => {
       return await apiRequest<Enrollment>(
-        `${baseUrl}/api/learner?courseId=${courseId}`
+        `${pathUrl}/api/learner?courseId=${courseId}`
       );
     },
 
@@ -82,7 +82,7 @@ export function pathSDK(config: LearnerAPIConfig) {
       value: MilestoneValue
     ): Promise<SubmitProgressResponse> => {
       return await apiRequest<SubmitProgressResponse>(
-        `${baseUrl}/api/learner?courseId=${courseId}`,
+        `${pathUrl}/api/learner?courseId=${courseId}`,
         {
           method: 'POST',
           body: {
