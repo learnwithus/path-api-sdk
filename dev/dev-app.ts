@@ -2,6 +2,23 @@ import { pathSDK } from '../src/index';
 
 let isAuthenticated = false;
 
+// Get courseId from URL query parameter or default to empty string
+function getCourseIdFromUrl(): string {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('courseId') || '';
+}
+
+// Update URL with courseId query parameter
+function updateUrlWithCourseId(courseId: string) {
+    const url = new URL(window.location.href);
+    if (courseId) {
+        url.searchParams.set('courseId', courseId);
+    } else {
+        url.searchParams.delete('courseId');
+    }
+    window.history.replaceState({}, '', url.toString());
+}
+
 // Create SDK instance
 function createPathSDKInstance() {
     return pathSDK({
@@ -93,13 +110,7 @@ async function loadUserProgress() {
     } catch (error: any) {
         resultDiv.className = 'error';
         resultDiv.innerHTML = `
-<strong>✗ Error:</strong> ${error.message}
-
-This could mean:
-- You're not signed in
-- You're not enrolled in course ${courseId}
-- The course doesn't exist
-        `.trim();
+<strong>✗ Error:</strong> ${error.message}`.trim();
         console.error('Failed to load progress:', error);
     } finally {
         btn.disabled = false;
@@ -203,8 +214,43 @@ This could mean:
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', async () => {
-    await checkAuth();
-    if (isAuthenticated) {
+    // Set courseId input from URL parameter
+    const courseIdInput = document.getElementById('progressCourseId') as HTMLInputElement;
+    const courseIdFromUrl = getCourseIdFromUrl();
+    if (courseIdFromUrl) {
+        courseIdInput.value = courseIdFromUrl;
+    }
+
+    // Add event listener to update URL and auth status when courseId changes
+    courseIdInput.addEventListener('input', async (e) => {
+        const newCourseId = (e.target as HTMLInputElement).value;
+        updateUrlWithCourseId(newCourseId);
+
+        // Clear progress display immediately to avoid showing stale data
+        const progressDisplayDiv = document.getElementById('progressDisplay')!;
+        progressDisplayDiv.innerHTML = '';
+        progressDisplayDiv.className = '';
+
+        // Refresh authentication status and progress with new courseId
+        if (newCourseId) {
+            await checkAuth();
+            // Always try to load progress to show the actual API error
+            await loadUserProgress();
+        } else {
+            // Clear auth status if no courseId
+            const authStatusDiv = document.getElementById('authStatus')!;
+            const authButtonsDiv = document.getElementById('authButtons')!;
+            isAuthenticated = false;
+            authStatusDiv.className = '';
+            authStatusDiv.textContent = 'Enter a course ID';
+            authButtonsDiv.innerHTML = '';
+        }
+    });
+
+    // Initial auth check
+    if (courseIdFromUrl) {
+        await checkAuth();
+        // Always try to load progress to show the actual API error
         await loadUserProgress();
     }
 });
