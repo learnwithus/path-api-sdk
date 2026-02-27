@@ -6,9 +6,9 @@
       <div class="form-group">
         <label for="progressCourseId">Course ID:</label>
         <input
-          type="number"
+          type="text"
           id="progressCourseId"
-          v-model.number="courseId"
+          v-model="courseId"
           placeholder="Enter course ID"
         />
       </div>
@@ -20,10 +20,7 @@
       @auth-changed="onAuthChanged"
     />
 
-    <ProgressDisplay
-      ref="progressDisplayRef"
-      :path-instance="pathInstance"
-    />
+    <ProgressDisplay ref="progressDisplayRef" :path-instance="pathInstance" />
 
     <ProgressSubmit
       :path-instance="pathInstance"
@@ -33,35 +30,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue';
-import { pathSDK } from '../src/index';
-import AuthStatus from './components/AuthStatus.vue';
-import ProgressDisplay from './components/ProgressDisplay.vue';
-import ProgressSubmit from './components/ProgressSubmit.vue';
+import { ref, watch, computed, nextTick } from "vue";
+import { pathSDK } from "../src/index";
+import AuthStatus from "./components/AuthStatus.vue";
+import ProgressDisplay from "./components/ProgressDisplay.vue";
+import ProgressSubmit from "./components/ProgressSubmit.vue";
 
 // Get courseId from URL query parameter
-function getCourseIdFromUrl(): number | null {
+function getCourseIdFromUrl(): string | null {
   const params = new URLSearchParams(window.location.search);
-  const id = params.get('courseId');
-  return id ? parseInt(id) : null;
+  const id = params.get("courseId");
+  return id ?? null;
 }
 
 // Update URL with courseId query parameter
-function updateUrlWithCourseId(id: number) {
+function updateUrlWithCourseId(id: string) {
   const url = new URL(window.location.href);
-  url.searchParams.set('courseId', id.toString());
-  window.history.replaceState({}, '', url.toString());
+  url.searchParams.set("courseId", id.toString());
+  window.history.replaceState({}, "", url.toString());
 }
 
 // Initialize courseId from URL or default to 1
-const courseId = ref<number>(getCourseIdFromUrl() || 1);
+const courseId = ref<string>(getCourseIdFromUrl() || "");
 
 // Create path SDK instance - reactive based on courseId
 const pathInstance = computed(() => {
   return pathSDK({
-    pathUrl: 'http://localhost:3000',
+    pathUrl: "http://localhost:3000",
     courseId: courseId.value,
-    courseUrl: 'http://localhost:5500'
+    courseUrl: "http://localhost:5500",
   });
 });
 
@@ -83,7 +80,7 @@ watch(courseId, async (newCourseId) => {
 
 // Handle auth changes
 function onAuthChanged(isAuthenticated: boolean) {
-  console.log('Auth changed:', isAuthenticated);
+  console.log("Auth changed:", isAuthenticated);
 }
 
 // Handle progress submission
@@ -95,5 +92,5 @@ function onProgressSubmitted() {
 
 <style>
 /* Import existing styles */
-@import './styles.css';
+@import "./styles.css";
 </style>

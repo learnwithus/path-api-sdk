@@ -5,12 +5,12 @@
 Create a single instance and use it throughout your app:
 
 ```typescript
-import { pathSDK } from '@vch-lt/path';
+import { pathSDK } from "@vch-lt/path";
 
 // Create the API instance once
 export const path = pathSDK({
   courseId: 1,
-  courseUrl: 'http://localhost:5500'
+  courseUrl: "http://localhost:5500",
 });
 
 // Use it anywhere in your app
@@ -32,7 +32,7 @@ await path.submitProgress(1, true);
 
 ```typescript
 const path = pathSDK({
-  courseId: number,           // Required: The course ID
+  courseId: string,           // Required: The course ID
   pathUrl?: string,           // Optional: Path backend URL (default: https://path.vchlearn.ca)
   courseUrl: string           // Required: Your course website URL for login redirects
 });
@@ -41,25 +41,28 @@ const path = pathSDK({
 ### Methods
 
 #### `path.checkAuth()`
+
 Check if user is authenticated.
 
 ```typescript
 const authStatus = await path.checkAuth();
 if (authStatus.isAuthenticated) {
-  console.log('User:', authStatus.enrollment.user);
+  console.log("User:", authStatus.enrollment.user);
 }
 ```
 
 #### `path.login(callbackUrl?: string)`
+
 Redirect to login page.
 
 ```typescript
 path.login();
 // or with custom callback
-path.login('https://example.com/callback');
+path.login("https://example.com/callback");
 ```
 
 #### `path.logout()`
+
 Logout the current user.
 
 ```typescript
@@ -67,20 +70,22 @@ await path.logout();
 ```
 
 #### `path.getEnrollmentAndProgress()`
+
 Get enrollment and progress data.
 
 ```typescript
 const enrollment = await path.getEnrollmentAndProgress();
-console.log('Course:', enrollment.course.title);
-console.log('Progress:', enrollment.progress);
+console.log("Course:", enrollment.course.title);
+console.log("Progress:", enrollment.progress);
 ```
 
 #### `path.submitProgress(milestoneId, value)`
+
 Submit progress for a milestone.
 
 ```typescript
 await path.submitProgress(1, true);
-await path.submitProgress(2, 'Completed');
+await path.submitProgress(2, "Completed");
 await path.submitProgress(3, { score: 95 });
 ```
 
@@ -97,8 +102,8 @@ import type {
   Course,
   AuthStatus,
   SubmitProgressResponse,
-  MilestoneValue
-} from '@vch-lt/path';
+  MilestoneValue,
+} from "@vch-lt/path";
 ```
 
 ## Examples
@@ -107,24 +112,24 @@ import type {
 
 ```tsx
 // api/path.ts
-import { pathSDK } from '@vch-lt/path';
+import { pathSDK } from "@vch-lt/path";
 
 export const path = pathSDK({
   courseId: parseInt(process.env.COURSE_ID),
-  courseUrl: window.location.origin
+  courseUrl: window.location.origin,
 });
 
 // components/LoginButton.tsx
-import { path } from '../api/path';
+import { path } from "../api/path";
 
 export function LoginButton() {
   return <button onClick={() => path.login()}>Login</button>;
 }
 
 // hooks/useAuth.ts
-import { useEffect, useState } from 'react';
-import { path } from '../api/path';
-import type { AuthStatus } from '@vch-lt/path';
+import { useEffect, useState } from "react";
+import { path } from "../api/path";
+import type { AuthStatus } from "@vch-lt/path";
 
 export function useAuth() {
   const [auth, setAuth] = useState<AuthStatus | null>(null);

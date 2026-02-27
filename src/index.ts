@@ -15,11 +15,11 @@ export { apiRequest } from './fetch-helper.js';
  *
  * @example
  * ```typescript
- * export const path = pathSDK({ courseId: 1 });
+ * export const path = pathSDK({ courseId: "your-course-id-here" });
  *
  * // Use the SDK
  * const auth = await path.checkAuth();
- * await path.submitProgress(1, true);
+ * await path.submitProgress('module-1-complete', true);
  * ```
  */
 export function pathSDK(config: LearnerAPIConfig) {
@@ -52,7 +52,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      */
     login: (callbackUrl?: string): void => {
       const callback = encodeURIComponent(callbackUrl || courseUrl);
-      window.location.href = `${pathUrl}/learner-login?courseId=${courseId}&callbackUrl=${callback}`;
+      window.location.href = `${pathUrl}/learner/login?courseId=${courseId}&callbackUrl=${callback}`;
     },
 
     /**
@@ -78,7 +78,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * Submit progress for a milestone
      */
     submitProgress: async (
-      milestoneId: number,
+      milestoneSlug: string,
       value: MilestoneValue
     ): Promise<SubmitProgressResponse> => {
       return await apiRequest<SubmitProgressResponse>(
@@ -86,7 +86,7 @@ export function pathSDK(config: LearnerAPIConfig) {
         {
           method: 'POST',
           body: {
-            milestoneId,
+            milestoneSlug,
             value,
           },
         }

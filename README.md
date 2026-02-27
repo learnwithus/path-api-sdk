@@ -155,13 +155,13 @@ try {
 }
 ```
 
-#### `submitProgress(milestoneId: number, value: MilestoneValue): Promise<SubmitProgressResponse>`
+#### `submitProgress(milestoneSlug: string, value: MilestoneValue): Promise<SubmitProgressResponse>`
 
 Submit progress for a milestone.
 
 **Parameters:**
 
-- `milestoneId` (number) - The milestone ID
+- `milestoneSlug` (string) - The milestone slug
 - `value` (MilestoneValue) - The progress value (boolean, string, number, array, or object)
 
 **Returns:**
@@ -179,19 +179,19 @@ Submit progress for a milestone.
 
 ```typescript
 // Boolean value
-await api.submitProgress(1, true);
+await api.submitProgress('module-1-complete', true);
 
 // String value
-await api.submitProgress(2, "Completed lesson 1");
+await api.submitProgress('lesson-1-notes', "Completed lesson 1");
 
 // Number value
-await api.submitProgress(3, 95);
+await api.submitProgress('quiz-1-score', 95);
 
 // Array value
-await api.submitProgress(4, ["item1", "item2"]);
+await api.submitProgress('selected-answers', ["item1", "item2"]);
 
 // Object value
-await api.submitProgress(5, { score: 95, completed: true });
+await api.submitProgress('quiz-1-result', { score: 95, completed: true });
 ```
 
 ## Error Handling

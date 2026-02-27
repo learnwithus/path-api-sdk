@@ -2,12 +2,12 @@
   <div class="section">
     <h2>Submit Progress</h2>
     <div class="form-group">
-      <label for="milestoneId">Milestone ID:</label>
+      <label for="milestoneSlug">Milestone Slug:</label>
       <input
-        type="number"
-        id="milestoneId"
-        v-model.number="milestoneId"
-        placeholder="e.g., 1"
+        type="text"
+        id="milestoneSlug"
+        v-model="milestoneSlug"
+        placeholder="e.g., module-1-complete"
       />
     </div>
     <div class="form-group">
@@ -18,11 +18,17 @@
         v-model="progressValue"
         placeholder="e.g., true, 'Completed', 95, or {score: 95}"
       />
-      <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string.</div>
+      <div class="hint">
+        Enter any value. JSON will be parsed, otherwise treated as string.
+      </div>
     </div>
     <div class="form-group">
-      <button id="submitProgressBtn" @click="submitProgress" :disabled="loading">
-        {{ loading ? 'Submitting...' : 'Submit Progress' }}
+      <button
+        id="submitProgressBtn"
+        @click="submitProgress"
+        :disabled="loading"
+      >
+        {{ loading ? "Submitting..." : "Submit Progress" }}
       </button>
     </div>
 
@@ -37,20 +43,34 @@
       <div v-else-if="result" class="success">
         <strong>✓ Progress submitted successfully!</strong>
 
-        <div style="margin-top: 15px;">
+        <div style="margin-top: 15px">
           <strong>Progress Details:</strong>
-          <div style="margin-left: 15px;">
+          <div style="margin-left: 15px">
             <div>Progress ID: {{ result.progress.id }}</div>
             <div>User ID: {{ result.progress.userId }}</div>
             <div>Milestone ID: {{ result.progress.courseMilestoneId }}</div>
             <div>Value: {{ result.progress.value }}</div>
-            <div>Created: {{ new Date(result.progress.createdAt).toLocaleString() }}</div>
+            <div>
+              Created:
+              {{ new Date(result.progress.createdAt).toLocaleString() }}
+            </div>
           </div>
         </div>
 
-        <details style="margin-top: 20px;">
-          <summary style="cursor: pointer; font-weight: bold;">Full Response (JSON)</summary>
-          <pre style="margin-top: 10px; background: rgba(0,0,0,0.05); padding: 10px; border-radius: 4px; overflow-x: auto;">{{ JSON.stringify(result, null, 2) }}</pre>
+        <details style="margin-top: 20px">
+          <summary style="cursor: pointer; font-weight: bold">
+            Full Response (JSON)
+          </summary>
+          <pre
+            style="
+              margin-top: 10px;
+              background: rgba(0, 0, 0, 0.05);
+              padding: 10px;
+              border-radius: 4px;
+              overflow-x: auto;
+            "
+            >{{ JSON.stringify(result, null, 2) }}</pre
+          >
         </details>
       </div>
 
@@ -58,12 +78,14 @@
       <div v-else-if="apiError" class="error">
         <strong>✗ Error:</strong> {{ apiError }}
 
-        <div style="margin-top: 10px;">
+        <div style="margin-top: 10px">
           This could mean:
-          <ul style="margin: 5px 0; padding-left: 20px;">
+          <ul style="margin: 5px 0; padding-left: 20px">
             <li>You're not signed in</li>
             <li>You're not enrolled in the course</li>
-            <li v-if="milestoneId">The milestone ID {{ milestoneId }} doesn't exist</li>
+            <li v-if="milestoneSlug">
+              The milestone slug {{ milestoneSlug }} doesn't exist
+            </li>
             <li>The milestone doesn't belong to this course</li>
             <li>The value type doesn't match the milestone's expected type</li>
             <li>CORS origin mismatch</li>
@@ -75,8 +97,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { PathSDKInstance, SubmitProgressResponse } from '../../src/index';
+import { ref } from "vue";
+import type { PathSDKInstance, SubmitProgressResponse } from "../../src/index";
 
 const props = defineProps<{
   pathInstance: PathSDKInstance;
@@ -86,8 +108,8 @@ const emit = defineEmits<{
   progressSubmitted: [];
 }>();
 
-const milestoneId = ref<number | null>(null);
-const progressValue = ref('');
+const milestoneSlug = ref("");
+const progressValue = ref("");
 const loading = ref(false);
 const validationError = ref<string | null>(null);
 const result = ref<SubmitProgressResponse | null>(null);
@@ -100,13 +122,13 @@ async function submitProgress() {
   apiError.value = null;
 
   // Validate inputs
-  if (milestoneId.value === null) {
-    validationError.value = 'Please enter a milestone ID';
+  if (!milestoneSlug.value) {
+    validationError.value = "Please enter a milestone slug";
     return;
   }
 
-  if (progressValue.value === '') {
-    validationError.value = 'Please enter a value';
+  if (progressValue.value === "") {
+    validationError.value = "Please enter a value";
     return;
   }
 
@@ -121,15 +143,18 @@ async function submitProgress() {
   loading.value = true;
 
   try {
-    const response = await props.pathInstance.submitProgress(milestoneId.value, parsedValue);
+    const response = await props.pathInstance.submitProgress(
+      milestoneSlug.value,
+      parsedValue,
+    );
     result.value = response;
-    console.log('Progress submitted:', response);
+    console.log("Progress submitted:", response);
 
     // Notify parent to reload progress
-    emit('progressSubmitted');
+    emit("progressSubmitted");
   } catch (error: any) {
     apiError.value = error.message;
-    console.error('Failed to submit progress:', error);
+    console.error("Failed to submit progress:", error);
   } finally {
     loading.value = false;
   }

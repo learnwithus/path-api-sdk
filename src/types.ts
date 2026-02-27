@@ -65,7 +65,7 @@ export interface LearnerAPIConfig {
   /**
    * Course ID for the learner
    */
-  courseId: number;
+  courseId: string;
 
   /**
    * Path backend URL (default: https://path.vchlearn.ca)
