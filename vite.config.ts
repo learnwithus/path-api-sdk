@@ -11,6 +11,7 @@ export default defineConfig({
         next: resolve(__dirname, 'src/next.ts'),
         server: resolve(__dirname, 'src/server.ts'),
         nuxt: resolve(__dirname, 'src/nuxt.ts'),
+        'nuxt-module': resolve(__dirname, 'src/nuxt-module.ts'),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,
@@ -19,8 +20,8 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {
-      // next/headers and h3 are provided by the consuming app — don't bundle them
-      external: ['next/headers', 'h3'],
+      // Framework deps are provided by the consuming app — don't bundle them
+      external: ['next/headers', 'h3', '@nuxt/kit'],
     },
   },
 

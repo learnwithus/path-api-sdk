@@ -186,76 +186,66 @@ export async function completeModule(milestoneSlug: string) {
 
 ---
 
-## Nuxt (Server Routes + SSR)
+## Nuxt Module (recommended for Nuxt apps)
 
-Use `@vch-lt/path/nuxt` for Nuxt server routes and SSR. It automatically reads the bearer token from the H3 event — no token passing required.
+Use `@vch-lt/path/nuxt-module` for zero-config Nuxt integration. The module:
+
+- Auto-registers the path-token middleware (SSR auth on first login, no extra redirect)
+- Auto-imports `pathNuxtSDK` for use in server routes — `courseId` is pre-configured
+- Auto-imports `usePathSDK` composable for use in components — `courseId` is pre-configured
+- Adds a client plugin that initializes the token from the URL on login redirect
+
+### Setup
+
+```ts
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['@vch-lt/path/nuxt-module'],
+  path: {
+    courseId: 'your-course-id',
+    // pathUrl: 'https://path.vchlearn.ca', // optional, this is the default
+  },
+});
+```
+
+### Server routes
+
+`pathNuxtSDK` is auto-imported — no imports needed, `courseId` is pre-configured:
+
+```ts
+// server/api/auth.get.ts
+export default defineEventHandler(async (event) => {
+  const path = await pathNuxtSDK(event);
+  return path.checkAuth();
+});
+```
+
+### Pages and components
+
+`usePathSDK` is auto-imported — no imports needed, `courseId` is pre-configured:
+
+```vue
+<!-- pages/course.vue -->
+<script setup lang="ts">
+// For SSR: proxy through a server route
+const { data: auth } = await useFetch('/api/auth');
+
+// For client-side interactions (login, logout)
+const path = usePathSDK();
+</script>
+```
+
+> **Note:** `pathNuxtSDK` is server-only. For login redirect and logout, use `usePathSDK()` in your Vue components or `<script setup>`.
+
+### Low-level Nuxt/H3 usage (advanced)
+
+If you need more control, use `@vch-lt/path/nuxt` directly without the module:
 
 ```ts
 import { pathNuxtSDK, createPathH3Middleware } from '@vch-lt/path/nuxt';
 ```
 
-### Middleware (required for SSR auth on first login)
-
-Without middleware, the bearer token arrives as `?path-token=` in the URL on redirect from Path login. The cookie isn't set until client-side JS runs, so the **first SSR render would see an unauthenticated request**.
-
-`createPathH3Middleware()` fixes this with no extra redirect — it reads `?path-token=`, sets the cookie, and stores the token in the H3 event context so the current render is authenticated immediately.
-
-```ts
-// server/middleware/path-token.ts
-import { createPathH3Middleware } from '@vch-lt/path/nuxt';
-export default createPathH3Middleware();
-```
-
-If you already have server middleware, compose them:
-
-```ts
-import { createPathH3Middleware } from '@vch-lt/path/nuxt';
-const handlePath = createPathH3Middleware();
-
-export default defineEventHandler(async (event) => {
-  await handlePath(event);
-  // ... your own logic
-});
-```
-
-### Server route
-
-```ts
-// server/api/progress.get.ts
-import { pathNuxtSDK } from '@vch-lt/path/nuxt';
-
-export default defineEventHandler(async (event) => {
-  const path = await pathNuxtSDK(event, { courseId: 'your-course-id' });
-  return path.getEnrollmentAndProgress();
-});
-```
-
-### SSR pages via useFetch
-
-For SSR pages, proxy through a server route so the token is read server-side:
-
-```ts
-// server/api/auth.get.ts
-import { pathNuxtSDK } from '@vch-lt/path/nuxt';
-
-export default defineEventHandler(async (event) => {
-  const path = await pathNuxtSDK(event, { courseId: 'your-course-id' });
-  return path.checkAuth();
-});
-```
-
-```vue
-<!-- pages/course.vue -->
-<script setup lang="ts">
-const { data: auth } = await useFetch('/api/auth');
-
-if (!auth.value?.isAuthenticated) {
-  await navigateTo('/login');
-}
-</script>
-```
-
-> **Note:** `pathNuxtSDK` is server-only. For client-side interactions (login redirect, logout), use the regular `pathSDK` in your Vue components.
+See the [H3 primitives](#nuxt--h3-primitives-advanced) section below.
 
 ---
 
@@ -308,9 +298,13 @@ Returns an SDK instance with:
 
 Same config as `pathSDK` minus `courseUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
 
-### `pathNuxtSDK(event, config)` — Nuxt server-side
+### `pathNuxtSDK(event, config)` — Nuxt/H3 server-side
 
-Takes an H3 event and same config as `pathNextSDK`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
+Takes an H3 event and same config as `pathNextSDK`. Returns a Promise of a server SDK instance. When using the Nuxt module, `pathNuxtSDK(event)` is auto-imported with `courseId` pre-configured.
+
+### `usePathSDK()` — Nuxt client-side (Nuxt module only)
+
+Auto-imported composable. Returns a pre-configured `pathSDK` instance. Use in Vue components for login, logout, and client-side progress submission.
 
 ### `pathServerSDK(options)` — generic server-side
 
