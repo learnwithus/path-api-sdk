@@ -53,12 +53,14 @@ function updateUrlWithCourseId(id: string) {
 // Initialize courseId from URL or default to 1
 const courseId = ref<string>(getCourseIdFromUrl() || "");
 
+const pathUrl = import.meta.env.VITE_PATH_URL;
+
 // Create path SDK instance - reactive based on courseId
 const pathInstance = computed(() => {
   return pathSDK({
-    pathUrl: "http://localhost:3000",
+    pathUrl: pathUrl ?? "http://localhost:3000",
     courseId: courseId.value,
-    courseUrl: "http://localhost:5500",
+    courseUrl: window.location.origin,
   });
 });
 
