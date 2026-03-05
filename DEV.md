@@ -20,7 +20,9 @@ npm install
 npm run dev
 ```
 
-This starts a Vite dev server at `http://localhost:5500` with hot module replacement (HMR).
+This starts a Vite dev server at `https://localhost:5500` with hot module replacement (HMR).
+
+> **Why HTTPS?** Path's production backend sets authentication cookies with the `Secure` flag, meaning they are only transmitted over HTTPS connections. Without HTTPS locally, the browser will not send these cookies and all authenticated requests will fail. You will need to accept the self-signed certificate warning in your browser on first load.
 
 ### Build Library
 
