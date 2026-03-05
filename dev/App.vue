@@ -55,8 +55,9 @@ const courseId = ref<string>(getCourseIdFromUrl() || "");
 
 const pathUrl = import.meta.env.VITE_PATH_URL;
 
-// Create path SDK instance - reactive based on courseId
+// Create path SDK instance - reactive based on courseId (null when empty)
 const pathInstance = computed(() => {
+  if (!courseId.value) return null;
   return pathSDK({
     pathUrl: pathUrl ?? "http://localhost:3000",
     courseId: courseId.value,
