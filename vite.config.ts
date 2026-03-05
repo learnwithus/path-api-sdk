@@ -8,20 +8,21 @@ export default defineConfig({
   // Build configuration for library mode
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'PathSDK',
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        next: resolve(__dirname, 'src/next.ts'),
+        server: resolve(__dirname, 'src/server.ts'),
+      },
       formats: ['es'],
-      fileName: (format) => `index.js`
+      fileName: (_format, entryName) => `${entryName}.js`,
     },
     outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {
-      output: {
-        // Preserve the exports structure
-        preserveModules: false,
-      }
-    }
+      // next/headers is provided by the consuming Next.js app — don't bundle it
+      external: ['next/headers'],
+    },
   },
 
   // Resolve configuration
