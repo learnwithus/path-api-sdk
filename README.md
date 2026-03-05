@@ -308,7 +308,7 @@ app.get('/progress', async (req, res) => {
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `courseId` | `string` | No | Your course ID from Path (falls back to `PATH_COURSE_ID` / `NEXT_PUBLIC_PATH_COURSE_ID` env var) |
+| `courseId` | `string` | No | Your course ID from Path (falls back to `VITE_PATH_COURSE_ID` / `NEXT_PUBLIC_PATH_COURSE_ID` / `PATH_COURSE_ID` env var) |
 | `courseUrl` | `string` | Yes | Your course website URL |
 | `pathUrl` | `string` | No | Path backend URL (default: `https://path.vchlearn.ca`) |
 

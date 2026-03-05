@@ -36,9 +36,11 @@ export function pathSDK(config: LearnerAPIConfig) {
   }
 
   const env = typeof process !== 'undefined' ? process.env : {} as NodeJS.ProcessEnv;
-  const pathUrl = config.pathUrl ?? env.PATH_URL ?? 'https://path.vchlearn.ca';
+  // import.meta.env is Vite's way of exposing VITE_-prefixed env vars to the browser
+  const meta = typeof import.meta !== 'undefined' ? (import.meta as { env?: Record<string, string> }).env ?? {} : {};
+  const pathUrl = config.pathUrl ?? meta.VITE_PATH_URL ?? env.PATH_URL ?? 'https://path.vchlearn.ca';
   const courseUrl = config.courseUrl;
-  const courseId = config.courseId ?? env.NEXT_PUBLIC_PATH_COURSE_ID ?? env.PATH_COURSE_ID ?? '';
+  const courseId = config.courseId ?? meta.VITE_PATH_COURSE_ID ?? env.NEXT_PUBLIC_PATH_COURSE_ID ?? env.PATH_COURSE_ID ?? '';
   if (!courseId) {
     throw new Error('[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.');
   }
