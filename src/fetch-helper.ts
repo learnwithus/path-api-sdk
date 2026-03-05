@@ -85,6 +85,10 @@ export async function apiRequest<T = unknown>(
     ...(body && { body: JSON.stringify(body) }),
   });
 
+  // If Better Auth issued a refreshed session token, update our stored copy
+  const refreshedToken = response.headers.get('set-auth-token');
+  if (refreshedToken) setToken(refreshedToken);
+
   if (!response.ok) {
     const error = await parseError(response);
     throw new Error(error.message || 'Request failed');
