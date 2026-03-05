@@ -1,21 +1,22 @@
-# Path Learner API SDK
+# @vch-lt/path
 
-A fully typesafe TypeScript SDK for integrating custom course websites with **Path**, the patient education tracking hub used by Vancouver Coastal Health.
+TypeScript SDK for integrating custom course websites with the Path LMS (VCH).
 
-## What is this SDK?
+Handles authentication, enrollment data, and progress tracking. Works client-side (any framework) and server-side (Next.js App Router, Nuxt, Express, etc.).
 
-This SDK enables custom course websites to:
+---
 
-- **Authenticate learners** through Path's authentication system
-- **Track user progress** on a per-learner, per-course basis
-- **Submit progress updates** when learners complete milestones
-- **Retrieve enrollment data** and historical progress records
+## How it works
 
-**One SDK instance per course** - Each course website creates a single `pathSDK` instance configured with that course's ID. The SDK handles all communication with Path's backend to sync learner progress.
+Authentication uses a **bearer token** stored in a cookie on your course domain:
 
-## Use Case
+1. Your course page calls `path.login()` → user is redirected to the Path login page
+2. After login, Path redirects back to your course page with `?token=...` in the URL
+3. The SDK automatically reads the token, stores it in a cookie, and cleans the URL
+4. All subsequent API calls include the token as an `Authorization: Bearer` header
+5. Your server-side code reads the same cookie to make authenticated requests
 
-VCH uses Path to track patient care training across multiple custom course websites. When a healthcare professional completes a training module on your custom course website, this SDK reports that progress back to Path's centralized tracking system. This allows VCH to monitor training compliance and progress across their entire organization.
+---
 
 ## Installation
 
@@ -23,186 +24,231 @@ VCH uses Path to track patient care training across multiple custom course websi
 npm install @vch-lt/path
 ```
 
-## Quick Start
+---
 
-```typescript
-import { pathSDK } from "@vch-lt/path";
+## Client-side usage
 
-// Create one SDK instance per course
-// This connects your course website to Path's tracking system
+Works in any browser environment — vanilla JS, Vue, React, Svelte, etc.
+
+```ts
+import pathSDK from '@vch-lt/path';
+
 const path = pathSDK({
-  courseId: "your-course-id", // Your course's ID in Path
-  courseUrl: "https://mycourse.com", // Your course website URL (for login redirects)
+  courseId: 'your-course-id',
+  courseUrl: 'https://your-course-site.com',
+  // pathUrl: 'https://path.vchlearn.ca', // optional, this is the default
 });
+```
 
-// Check authentication status
-const authStatus = await path.checkAuth();
-if (authStatus.isAuthenticated) {
-  console.log("Logged in as:", authStatus.enrollment?.user.email);
+### Initialize on page load
+
+Import the SDK as early as possible (e.g., in your app entry point). On load it automatically reads `?token=` from the URL, stores it in a cookie, and removes it from the URL bar.
+
+```ts
+import '@vch-lt/path'; // side-effect import handles token initialization
+// or
+import pathSDK from '@vch-lt/path';
+const path = pathSDK({ courseId: '...', courseUrl: '...' });
+```
+
+### Check authentication
+
+```ts
+const auth = await path.checkAuth();
+
+if (!auth.isAuthenticated) {
+  // Pass the current URL so the user returns to the right page after login
+  path.login(window.location.href);
+  return;
 }
 
-// Get enrollment and progress
-const enrollment = await path.getEnrollmentAndProgress();
-console.log("Progress records:", enrollment.progress);
-
-// Submit progress
-await path.submitProgress(1, true);
+console.log(auth.enrollment?.user.email);
+console.log(auth.enrollment?.progress);
 ```
+
+### Submit progress
+
+```ts
+await path.submitProgress('module-1-complete', true);
+await path.submitProgress('quiz-score', 85);
+await path.submitProgress('chapter', 'introduction');
+```
+
+### Get enrollment and progress
+
+```ts
+const enrollment = await path.getEnrollmentAndProgress();
+console.log(enrollment.progress);
+```
+
+### Logout
+
+```ts
+await path.logout();
+```
+
+---
+
+## Next.js App Router (Server Components)
+
+Use `@vch-lt/path/next` in Server Components, Route Handlers, and Server Actions. It automatically reads the bearer token from the Next.js cookie store — no token passing required.
+
+```ts
+import { pathNextSDK } from '@vch-lt/path/next';
+```
+
+### Server Component
+
+```tsx
+// app/course/page.tsx
+import { pathNextSDK } from '@vch-lt/path/next';
+import { redirect } from 'next/navigation';
+
+export default async function CoursePage() {
+  const path = await pathNextSDK({ courseId: 'your-course-id' });
+  const auth = await path.checkAuth();
+
+  if (!auth.isAuthenticated) {
+    redirect('/login');
+  }
+
+  const enrollment = auth.enrollment!;
+
+  return (
+    <div>
+      <h1>Welcome, {enrollment.user.email}</h1>
+      <p>Progress: {enrollment.progress?.length ?? 0} milestones completed</p>
+    </div>
+  );
+}
+```
+
+### Route Handler
+
+```ts
+// app/api/progress/route.ts
+import { pathNextSDK } from '@vch-lt/path/next';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const path = await pathNextSDK({ courseId: 'your-course-id' });
+  const enrollment = await path.getEnrollmentAndProgress();
+  return NextResponse.json(enrollment);
+}
+```
+
+### Server Action
+
+```ts
+// app/actions.ts
+'use server';
+import { pathNextSDK } from '@vch-lt/path/next';
+
+export async function completeModule(milestoneSlug: string) {
+  const path = await pathNextSDK({ courseId: 'your-course-id' });
+  return path.submitProgress(milestoneSlug, true);
+}
+```
+
+> **Note:** `pathNextSDK` is server-only. For client-side interactions (login redirect, logout), use the regular `pathSDK` in a Client Component.
+
+---
+
+## Generic server-side usage
+
+Use `@vch-lt/path/server` for Nuxt server routes, Express, or any other server framework. You read the token from your framework's cookie store and pass it in.
+
+```ts
+import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+```
+
+### Nuxt server route
+
+```ts
+// server/api/progress.get.ts
+import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+
+export default defineEventHandler(async (event) => {
+  const token = getCookie(event, TOKEN_STORAGE_KEY) ?? null;
+  const path = pathServerSDK({ courseId: 'your-course-id', token });
+  return path.getEnrollmentAndProgress();
+});
+```
+
+### Nuxt composable (SSR + client)
+
+```ts
+// composables/usePath.ts
+import { TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+
+export function usePath() {
+  const tokenCookie = useCookie(TOKEN_STORAGE_KEY);
+
+  const checkAuth = async () => {
+    const { data } = await useFetch('/api/learner', {
+      headers: tokenCookie.value
+        ? { Authorization: `Bearer ${tokenCookie.value}` }
+        : {},
+    });
+    return data.value;
+  };
+
+  return { checkAuth };
+}
+```
+
+### Express
+
+```ts
+import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+import cookieParser from 'cookie-parser';
+
+app.use(cookieParser());
+
+app.get('/progress', async (req, res) => {
+  const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
+  const path = pathServerSDK({ courseId: 'your-course-id', token });
+  res.json(await path.getEnrollmentAndProgress());
+});
+```
+
+---
 
 ## API Reference
 
-### pathSDK(config)
+### `pathSDK(config)` — client-side
 
-Create a new Path API instance.
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `courseId` | `string` | Yes | Your course ID from Path |
+| `courseUrl` | `string` | Yes | Your course website URL |
+| `pathUrl` | `string` | No | Path backend URL (default: `https://path.vchlearn.ca`) |
 
-**Parameters:**
+Returns an SDK instance with:
 
-- `config.courseId` (string, required) - The course ID in Path
-- `config.pathUrl` (string, optional) - Path backend URL (default: `https://path.vchlearn.ca`)
-- `config.courseUrl` (string, required) - Your course website URL for login redirects
+| Method | Description |
+|--------|-------------|
+| `checkAuth()` | Returns `{ isAuthenticated, enrollment? }` |
+| `login(callbackUrl?)` | Redirects to Path login. Pass `window.location.href` to return to current page |
+| `logout()` | Clears token and calls logout API |
+| `getEnrollmentAndProgress()` | Returns full enrollment + progress data |
+| `submitProgress(milestoneSlug, value)` | Records progress for a milestone |
 
-**Example:**
+### `pathNextSDK(config)` — Next.js server-side
 
-```typescript
-const path = pathSDK({
-  courseId: "your-course-id",
-  pathUrl: "https://path.vchlearn.ca", // Usually you don't need to set this
-  courseUrl: "https://mycourse.com",
-});
-```
+Same config as `pathSDK` minus `courseUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
 
-### Methods
+### `pathServerSDK(options)` — generic server-side
 
-#### `path.checkAuth(): Promise<AuthStatus>`
+Same config as `pathNextSDK` plus `token: string | null`. Synchronous — returns the SDK instance directly.
 
-Check authentication status.
+---
 
-**Returns:**
+## Cookie details
 
-```typescript
-{
-  isAuthenticated: boolean;
-  enrollment?: Enrollment;
-}
-```
+The bearer token is stored in a cookie named `path_bearer_token` on your course domain with `SameSite=Lax; Secure`. This means:
 
-**Example:**
-
-```typescript
-const authStatus = await api.checkAuth();
-if (authStatus.isAuthenticated) {
-  console.log("User:", authStatus.enrollment?.user);
-}
-```
-
-#### `login(callbackUrl?: string): void`
-
-Redirect to login page.
-
-**Parameters:**
-
-- `callbackUrl` (string, optional) - Override the default callback URL
-
-**Example:**
-
-```typescript
-api.login("https://example.com/after-login");
-```
-
-#### `logout(): Promise<void>`
-
-Logout the current user.
-
-**Throws:** Error if logout fails
-
-**Example:**
-
-```typescript
-try {
-  await api.logout();
-  console.log("Logged out successfully");
-} catch (error) {
-  console.error("Logout failed:", error.message);
-}
-```
-
-#### `getEnrollmentAndProgress(): Promise<Enrollment>`
-
-Get enrollment and progress data.
-
-**Returns:**
-
-```typescript
-{
-  id: number;
-  user: User;
-  course: Course;
-  progress?: Progress[];
-}
-```
-
-**Throws:** Error if not authenticated or request fails
-
-**Example:**
-
-```typescript
-try {
-  const enrollment = await api.getEnrollmentAndProgress();
-  console.log("Course:", enrollment.course.title);
-  console.log("Progress:", enrollment.progress);
-} catch (error) {
-  console.error("Failed to fetch:", error.message);
-}
-```
-
-#### `submitProgress(milestoneSlug: string, value: MilestoneValue): Promise<SubmitProgressResponse>`
-
-Submit progress for a milestone.
-
-**Parameters:**
-
-- `milestoneSlug` (string) - The milestone slug
-- `value` (MilestoneValue) - The progress value (boolean, string, number, array, or object)
-
-**Returns:**
-
-```typescript
-{
-  success: boolean;
-  progress: Progress;
-}
-```
-
-**Throws:** Error if submission fails
-
-**Example:**
-
-```typescript
-// Boolean value
-await api.submitProgress('module-1-complete', true);
-
-// String value
-await api.submitProgress('lesson-1-notes', "Completed lesson 1");
-
-// Number value
-await api.submitProgress('quiz-1-score', 95);
-
-// Array value
-await api.submitProgress('selected-answers', ["item1", "item2"]);
-
-// Object value
-await api.submitProgress('quiz-1-result', { score: 95, completed: true });
-```
-
-## Error Handling
-
-All async methods may throw errors. Always wrap them in try-catch blocks:
-
-```typescript
-try {
-  await api.submitProgress('module-1-complete', true);
-} catch (error) {
-  console.error("Submission failed:", error.message);
-  // Handle error appropriately
-}
-```
+- It is readable by your course server (for SSR)
+- It is **not** sent cross-origin (Path's server never receives it as a cookie — only as a `Bearer` header)
+- It survives page reloads and navigation within your course site
+- It is cleared when the user logs out
