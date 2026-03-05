@@ -31,7 +31,7 @@ import { pathSDK } from "@vch-lt/path";
 // Create one SDK instance per course
 // This connects your course website to Path's tracking system
 const path = pathSDK({
-  courseId: 1, // Your course's ID in Path
+  courseId: "your-course-id", // Your course's ID in Path
   courseUrl: "https://mycourse.com", // Your course website URL (for login redirects)
 });
 
@@ -57,7 +57,7 @@ Create a new Path API instance.
 
 **Parameters:**
 
-- `config.courseId` (number, required) - The course ID in Path
+- `config.courseId` (string, required) - The course ID in Path
 - `config.pathUrl` (string, optional) - Path backend URL (default: `https://path.vchlearn.ca`)
 - `config.courseUrl` (string, required) - Your course website URL for login redirects
 
@@ -65,7 +65,7 @@ Create a new Path API instance.
 
 ```typescript
 const path = pathSDK({
-  courseId: 1,
+  courseId: "your-course-id",
   pathUrl: "https://path.vchlearn.ca", // Usually you don't need to set this
   courseUrl: "https://mycourse.com",
 });
@@ -200,7 +200,7 @@ All async methods may throw errors. Always wrap them in try-catch blocks:
 
 ```typescript
 try {
-  await api.submitProgress(1, true);
+  await api.submitProgress('module-1-complete', true);
 } catch (error) {
   console.error("Submission failed:", error.message);
   // Handle error appropriately

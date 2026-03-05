@@ -60,7 +60,7 @@ dev/
 The root component that:
 
 - Manages the `courseId` input field
-- Syncs `courseId` with URL query parameters (e.g., `?courseId=205`)
+- Syncs `courseId` with URL query parameters (e.g., `?courseId=my-course-slug`)
 - Creates a reactive `pathSDK` instance based on `courseId`
 - Coordinates child component updates when `courseId` changes
 

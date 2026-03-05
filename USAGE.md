@@ -9,8 +9,8 @@ import { pathSDK } from "@vch-lt/path";
 
 // Create the API instance once
 export const path = pathSDK({
-  courseId: 1,
-  courseUrl: "http://localhost:5500",
+  courseId: "your-course-id",
+  courseUrl: "https://localhost:5500",
 });
 
 // Use it anywhere in your app
@@ -32,9 +32,9 @@ await path.submitProgress(1, true);
 
 ```typescript
 const path = pathSDK({
-  courseId: string,           // Required: The course ID
-  pathUrl?: string,           // Optional: Path backend URL (default: https://path.vchlearn.ca)
-  courseUrl: string           // Required: Your course website URL for login redirects
+  courseId: string,            // Required: The course ID
+  pathUrl?: string,            // Optional: Path backend URL (default: https://path.vchlearn.ca)
+  courseUrl: string            // Required: Your course website URL for login redirects
 });
 ```
 
@@ -115,7 +115,7 @@ import type {
 import { pathSDK } from "@vch-lt/path";
 
 export const path = pathSDK({
-  courseId: parseInt(process.env.COURSE_ID),
+  courseId: process.env.COURSE_ID,
   courseUrl: window.location.origin,
 });
 
