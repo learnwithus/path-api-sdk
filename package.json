@@ -45,7 +45,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc --emitDeclarationOnly",
+    "build": "vite build && tsc --emitDeclarationOnly && cp -r src/nuxt-runtime dist/nuxt-runtime",
     "preview": "vite preview",
     "prepublishOnly": "npm run build"
   },
