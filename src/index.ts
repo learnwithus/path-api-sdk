@@ -5,17 +5,35 @@ import type {
   SubmitProgressResponse,
   MilestoneValue,
 } from './types.js';
-import { apiRequest } from './fetch-helper.js';
+import { apiRequest, setToken, getToken } from './fetch-helper.js';
 
 export * from './types.js';
-export { apiRequest } from './fetch-helper.js';
+export { apiRequest, setToken, getToken } from './fetch-helper.js';
+
+/**
+ * On load, check the URL query params for a token passed back from the Path login redirect.
+ * Stores it in localStorage and removes it from the URL.
+ */
+function initTokenFromUrl(): void {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (token) {
+    setToken(token);
+    params.delete('token');
+    const search = params.toString() ? `?${params.toString()}` : '';
+    window.history.replaceState(null, '', window.location.pathname + search + window.location.hash);
+  }
+}
+
+initTokenFromUrl();
 
 /**
  * Factory function to create a Path SDK instance
  *
  * @example
  * ```typescript
- * export const path = pathSDK({ courseId: "your-course-id-here" });
+ * export const path = pathSDK({ courseId: "your-course-id-here", courseUrl: "https://your-lms.com" });
  *
  * // Use the SDK
  * const auth = await path.checkAuth();
@@ -56,13 +74,14 @@ export function pathSDK(config: LearnerAPIConfig) {
     },
 
     /**
-     * Logout the current user
+     * Logout the current user and clear the stored token
      */
     logout: async (): Promise<void> => {
       await apiRequest(
         `${pathUrl}/api/learner/logout?courseId=${courseId}`,
         { method: 'POST' }
       );
+      setToken(null);
     },
 
     /**
