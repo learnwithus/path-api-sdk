@@ -191,8 +191,8 @@ export async function completeModule(milestoneSlug: string) {
 Use `@vch-lt/path/nuxt-module` for zero-config Nuxt integration. The module:
 
 - Auto-registers the path-token middleware (SSR auth on first login, no extra redirect)
-- Auto-imports `pathNuxtSDK` for use in server routes — `courseId` is pre-configured
-- Auto-imports `usePathSDK` composable for use in components — `courseId` is pre-configured
+- Auto-imports `usePath()` — a universal composable that works on server and client transparently
+- Auto-imports `pathNuxtSDK` for lower-level use in server routes
 - Adds a client plugin that initializes the token from the URL on login redirect
 
 ### Setup
@@ -208,44 +208,64 @@ export default defineNuxtConfig({
 });
 ```
 
-### Server routes
-
-`pathNuxtSDK` is auto-imported — no imports needed, `courseId` is pre-configured:
-
-```ts
-// server/api/auth.get.ts
-export default defineEventHandler(async (event) => {
-  const path = await pathNuxtSDK(event);
-  return path.checkAuth();
-});
-```
-
 ### Pages and components
 
-`usePathSDK` is auto-imported — no imports needed, `courseId` is pre-configured:
+`usePath()` is auto-imported. Data-fetching methods use `useAsyncData` internally so they fetch on the server during SSR and reuse that result on the client — no double-fetch, no extra server route needed:
 
 ```vue
 <!-- pages/course.vue -->
 <script setup lang="ts">
-// For SSR: proxy through a server route
-const { data: auth } = await useFetch('/api/auth');
+const path = usePath();
 
-// For client-side interactions (login, logout)
-const path = usePathSDK();
+// checkAuth() and getEnrollmentAndProgress() work on server and client
+const { data: auth } = await path.checkAuth();
+
+if (!auth.value?.isAuthenticated) {
+  path.login(window.location.href);
+}
 </script>
 ```
 
-> **Note:** `pathNuxtSDK` is server-only. For login redirect and logout, use `usePathSDK()` in your Vue components or `<script setup>`.
+```vue
+<!-- components/ProgressButton.vue -->
+<script setup lang="ts">
+const path = usePath();
 
-### Low-level Nuxt/H3 usage (advanced)
+const complete = async () => {
+  await path.submitProgress('module-1', true);
+};
+</script>
+```
 
-If you need more control, use `@vch-lt/path/nuxt` directly without the module:
+### `usePath()` methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `checkAuth()` | `AsyncData<AuthStatus>` | Auth status + enrollment. SSR-safe. |
+| `getEnrollmentAndProgress()` | `AsyncData<Enrollment>` | Full enrollment data. SSR-safe. |
+| `submitProgress(slug, value)` | `Promise` | Record a milestone. Works on server and client. |
+| `login(callbackUrl?)` | `void` | Redirect to Path login. Client-only. |
+| `logout()` | `Promise` | Clear session and log out. Client-only. |
+
+### Server routes (advanced)
+
+`pathNuxtSDK` is also auto-imported for cases where you need a server route:
+
+```ts
+// server/api/something.get.ts
+export default defineEventHandler(async (event) => {
+  const path = await pathNuxtSDK(event);
+  return path.getEnrollmentAndProgress();
+});
+```
+
+### Low-level Nuxt/H3 usage (without the module)
+
+If you need more control, use `@vch-lt/path/nuxt` directly:
 
 ```ts
 import { pathNuxtSDK, createPathH3Middleware } from '@vch-lt/path/nuxt';
 ```
-
-See the [H3 primitives](#nuxt--h3-primitives-advanced) section below.
 
 ---
 
@@ -302,9 +322,9 @@ Same config as `pathSDK` minus `courseUrl`. Returns a Promise of a server SDK in
 
 Takes an H3 event and same config as `pathNextSDK`. Returns a Promise of a server SDK instance. When using the Nuxt module, `pathNuxtSDK(event)` is auto-imported with `courseId` pre-configured.
 
-### `usePathSDK()` — Nuxt client-side (Nuxt module only)
+### `usePath()` — Nuxt universal composable (Nuxt module only)
 
-Auto-imported composable. Returns a pre-configured `pathSDK` instance. Use in Vue components for login, logout, and client-side progress submission.
+Auto-imported. Works in pages, components, and layouts on both server and client. Data-fetching methods (`checkAuth`, `getEnrollmentAndProgress`) return `AsyncData` (Nuxt's `useAsyncData` result) — SSR-safe with no double-fetch. Action methods (`login`, `logout`, `submitProgress`) return Promises.
 
 ### `pathServerSDK(options)` — generic server-side
 

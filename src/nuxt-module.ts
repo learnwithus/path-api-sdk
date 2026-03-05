@@ -55,22 +55,71 @@ export const pathNuxtSDK = (event: any) => _pathNuxtSDK(event, { courseId: '${co
 
     addImports({ name: 'pathNuxtSDK', from: serverTemplate.dst });
 
-    // 3. Auto-import usePathSDK composable (pre-configured — use in components and composables)
+    // 3. Auto-import usePath — universal composable that works on server and client transparently
     const composableTemplate = addTemplate({
       filename: 'path-sdk/composable.ts',
       write: true,
       getContents: () => `
+import { useAsyncData, useRequestEvent } from '#app';
 import pathSDK from '@vch-lt/path';
-/** Pre-configured Path client SDK. Use in Vue components and composables. */
-export const usePathSDK = () => pathSDK({
-  courseId: '${courseId}',
-  pathUrl: '${pathUrl}',
-  courseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+import { pathNuxtSDK as _pathNuxtSDK } from '@vch-lt/path/nuxt';
+import type { MilestoneValue } from '@vch-lt/path';
+
+const _config = { courseId: '${courseId}', pathUrl: '${pathUrl}' };
+
+function _serverSDK() {
+  return _pathNuxtSDK(useRequestEvent(), _config);
+}
+function _clientSDK() {
+  return pathSDK({ ..._config, courseUrl: window.location.origin });
+}
+
+/**
+ * Universal Path composable. Works in pages, components, and layouts.
+ * Reads auth from the server cookie on SSR; reads from the browser cookie on the client.
+ * Data-fetching methods use useAsyncData to avoid double-fetching during hydration.
+ *
+ * @example
+ * const { data: auth } = await usePath().checkAuth();
+ * if (!auth.value?.isAuthenticated) usePath().login(window.location.href);
+ */
+export const usePath = () => ({
+  /** Check auth status. SSR-safe — result is shared between server and client. */
+  checkAuth: () =>
+    useAsyncData('path-auth', async () =>
+      import.meta.server
+        ? (await _serverSDK()).checkAuth()
+        : _clientSDK().checkAuth()
+    ),
+
+  /** Get full enrollment and progress data. SSR-safe. */
+  getEnrollmentAndProgress: () =>
+    useAsyncData('path-enrollment', async () =>
+      import.meta.server
+        ? (await _serverSDK()).getEnrollmentAndProgress()
+        : _clientSDK().getEnrollmentAndProgress()
+    ),
+
+  /** Submit a milestone progress value. Works on server and client. */
+  submitProgress: async (milestoneSlug: string, value: MilestoneValue) =>
+    import.meta.server
+      ? (await _serverSDK()).submitProgress(milestoneSlug, value)
+      : _clientSDK().submitProgress(milestoneSlug, value),
+
+  /** Redirect to the Path login page. Client-only. */
+  login: (callbackUrl?: string) => {
+    if (import.meta.client) _clientSDK().login(callbackUrl);
+  },
+
+  /** Clear the session and log out. Client-only. */
+  logout: async () => {
+    if (import.meta.client) await _clientSDK().logout();
+  },
 });
 `.trim(),
     });
 
-    addImports({ name: 'usePathSDK', from: composableTemplate.dst });
+    addImports({ name: 'usePath', from: composableTemplate.dst });
 
     // 4. Client plugin: read ?path-token= from URL on first load after login and store in cookie
     const pluginTemplate = addTemplate({
