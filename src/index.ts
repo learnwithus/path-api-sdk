@@ -11,24 +11,6 @@ export * from './types.js';
 export { apiRequest, setToken, getToken, TOKEN_STORAGE_KEY } from './fetch-helper.js';
 
 /**
- * On load, check the URL query params for a path-token passed back from the Path login redirect.
- * Stores it in localStorage and removes it from the URL.
- */
-function initTokenFromUrl(): void {
-  if (typeof window === 'undefined') return;
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('path-token');
-  if (token) {
-    setToken(token);
-    params.delete('path-token');
-    const search = params.toString() ? `?${params.toString()}` : '';
-    window.history.replaceState(null, '', window.location.pathname + search + window.location.hash);
-  }
-}
-
-initTokenFromUrl();
-
-/**
  * Factory function to create a Path SDK instance
  *
  * @example
@@ -41,6 +23,18 @@ initTokenFromUrl();
  * ```
  */
 export function pathSDK(config: LearnerAPIConfig) {
+  // Read ?path-token= from the URL on first SDK instantiation (login redirect)
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('path-token');
+    if (urlToken) {
+      setToken(urlToken);
+      params.delete('path-token');
+      const search = params.toString() ? `?${params.toString()}` : '';
+      window.history.replaceState(null, '', window.location.pathname + search + window.location.hash);
+    }
+  }
+
   const env = typeof process !== 'undefined' ? process.env : {} as NodeJS.ProcessEnv;
   const pathUrl = config.pathUrl ?? env.PATH_URL ?? 'https://path.vchlearn.ca';
   const courseUrl = config.courseUrl;

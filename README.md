@@ -42,11 +42,9 @@ const path = pathSDK({
 
 ### Initialize on page load
 
-Import the SDK as early as possible (e.g., in your app entry point). On load it automatically reads `?path-token=` from the URL, stores it in a cookie, and removes it from the URL bar.
+Create the SDK instance as early as possible (e.g., in your app entry point). On first instantiation it automatically reads `?path-token=` from the URL, stores it in a cookie, and removes it from the URL bar.
 
 ```ts
-import '@vch-lt/path'; // side-effect import handles token initialization
-// or
 import pathSDK from '@vch-lt/path';
 const path = pathSDK({ courseId: '...', courseUrl: '...' });
 ```
