@@ -94,7 +94,39 @@ await path.logout();
 Use `@vch-lt/path/next` in Server Components, Route Handlers, and Server Actions. It automatically reads the bearer token from the Next.js cookie store — no token passing required.
 
 ```ts
-import { pathNextSDK } from '@vch-lt/path/next';
+import { pathNextSDK, createPathMiddleware } from '@vch-lt/path/next';
+```
+
+### Middleware (required for SSR auth on first login)
+
+Without middleware, the bearer token arrives as `?token=` in the URL on redirect from Path login. The cookie isn't set until client-side JS runs, so the **first SSR render would see an unauthenticated request**.
+
+`createPathMiddleware()` fixes this with no extra redirect — it reads `?token=`, sets the cookie, and forwards the token to SSR all in one request.
+
+```ts
+// middleware.ts
+import { createPathMiddleware } from '@vch-lt/path/next';
+import type { NextRequest } from 'next/server';
+
+const handlePath = createPathMiddleware();
+
+export function middleware(request: NextRequest) {
+  return handlePath(request);
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+If you already have middleware, call it alongside your own logic:
+
+```ts
+export function middleware(request: NextRequest) {
+  const pathResponse = handlePath(request);
+  if (pathResponse) return pathResponse;
+  // ... your own middleware logic
+}
 ```
 
 ### Server Component
