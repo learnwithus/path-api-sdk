@@ -1,7 +1,11 @@
 import type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from './types.js';
 
 export interface ServerSDKConfig {
-  courseId: string;
+  /**
+   * Course ID for the learner.
+   * Can be omitted if PATH_COURSE_ID is set in the environment.
+   */
+  courseId?: string;
   pathUrl?: string;
 }
 
@@ -25,8 +29,11 @@ async function serverFetch<T>(url: string, token: string | null, options: { meth
 }
 
 export function createServerSDK(config: ServerSDKConfig, token: string | null) {
-  const pathUrl = config.pathUrl || 'https://path.vchlearn.ca';
-  const courseId = config.courseId;
+  const pathUrl = config.pathUrl || process.env.PATH_URL || 'https://path.vchlearn.ca';
+  const courseId = config.courseId || process.env.PATH_COURSE_ID || '';
+  if (!courseId) {
+    throw new Error('[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.');
+  }
 
   return {
     /**

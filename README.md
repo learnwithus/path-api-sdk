@@ -11,7 +11,7 @@ Handles authentication, enrollment data, and progress tracking. Works client-sid
 Authentication uses a **bearer token** stored in a cookie on your course domain:
 
 1. Your course page calls `path.login()` → user is redirected to the Path login page
-2. After login, Path redirects back to your course page with `?token=...` in the URL
+2. After login, Path redirects back to your course page with `?path-token=...` in the URL
 3. The SDK automatically reads the token, stores it in a cookie, and cleans the URL
 4. All subsequent API calls include the token as an `Authorization: Bearer` header
 5. Your server-side code reads the same cookie to make authenticated requests
@@ -42,7 +42,7 @@ const path = pathSDK({
 
 ### Initialize on page load
 
-Import the SDK as early as possible (e.g., in your app entry point). On load it automatically reads `?token=` from the URL, stores it in a cookie, and removes it from the URL bar.
+Import the SDK as early as possible (e.g., in your app entry point). On load it automatically reads `?path-token=` from the URL, stores it in a cookie, and removes it from the URL bar.
 
 ```ts
 import '@vch-lt/path'; // side-effect import handles token initialization
@@ -93,15 +93,27 @@ await path.logout();
 
 Use `@vch-lt/path/next` in Server Components, Route Handlers, and Server Actions. It automatically reads the bearer token from the Next.js cookie store — no token passing required.
 
-```ts
-import { pathNextSDK, createPathMiddleware } from '@vch-lt/path/next';
+### Setup
+
+Set your course ID in the environment so you never have to pass it explicitly:
+
+```bash
+# .env.local
+PATH_COURSE_ID=your-course-id
 ```
 
 ### Middleware (required for SSR auth on first login)
 
-Without middleware, the bearer token arrives as `?token=` in the URL on redirect from Path login. The cookie isn't set until client-side JS runs, so the **first SSR render would see an unauthenticated request**.
+Without middleware, the bearer token arrives as `?path-token=` in the URL on redirect from Path login. The cookie isn't set until client-side JS runs, so the **first SSR render would see an unauthenticated request**.
 
-`createPathMiddleware()` fixes this with no extra redirect — it reads `?token=`, sets the cookie, and forwards the token to SSR all in one request.
+The pre-built middleware fixes this with no extra redirect — it reads `?path-token=`, sets the cookie, and forwards the token to SSR all in one request.
+
+```ts
+// middleware.ts
+export { pathMiddleware as default, pathMiddlewareConfig as config } from '@vch-lt/path/next';
+```
+
+If you already have middleware, compose them:
 
 ```ts
 // middleware.ts
@@ -111,22 +123,14 @@ import type { NextRequest } from 'next/server';
 const handlePath = createPathMiddleware();
 
 export function middleware(request: NextRequest) {
-  return handlePath(request);
+  const pathResponse = handlePath(request);
+  if (pathResponse) return pathResponse;
+  // ... your own middleware logic
 }
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
-```
-
-If you already have middleware, call it alongside your own logic:
-
-```ts
-export function middleware(request: NextRequest) {
-  const pathResponse = handlePath(request);
-  if (pathResponse) return pathResponse;
-  // ... your own middleware logic
-}
 ```
 
 ### Server Component
@@ -137,7 +141,7 @@ import { pathNextSDK } from '@vch-lt/path/next';
 import { redirect } from 'next/navigation';
 
 export default async function CoursePage() {
-  const path = await pathNextSDK({ courseId: 'your-course-id' });
+  const path = await pathNextSDK(); // courseId read from PATH_COURSE_ID env var
   const auth = await path.checkAuth();
 
   if (!auth.isAuthenticated) {
@@ -155,6 +159,12 @@ export default async function CoursePage() {
 }
 ```
 
+You can also pass `courseId` explicitly if you prefer:
+
+```tsx
+const path = await pathNextSDK({ courseId: 'your-course-id' });
+```
+
 ### Route Handler
 
 ```ts
@@ -163,7 +173,7 @@ import { pathNextSDK } from '@vch-lt/path/next';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const path = await pathNextSDK({ courseId: 'your-course-id' });
+  const path = await pathNextSDK();
   const enrollment = await path.getEnrollmentAndProgress();
   return NextResponse.json(enrollment);
 }
@@ -177,7 +187,7 @@ export async function GET() {
 import { pathNextSDK } from '@vch-lt/path/next';
 
 export async function completeModule(milestoneSlug: string) {
-  const path = await pathNextSDK({ courseId: 'your-course-id' });
+  const path = await pathNextSDK();
   return path.submitProgress(milestoneSlug, true);
 }
 ```
@@ -300,7 +310,7 @@ app.get('/progress', async (req, res) => {
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `courseId` | `string` | Yes | Your course ID from Path |
+| `courseId` | `string` | No | Your course ID from Path (falls back to `PATH_COURSE_ID` / `NEXT_PUBLIC_PATH_COURSE_ID` env var) |
 | `courseUrl` | `string` | Yes | Your course website URL |
 | `pathUrl` | `string` | No | Path backend URL (default: `https://path.vchlearn.ca`) |
 
@@ -314,9 +324,9 @@ Returns an SDK instance with:
 | `getEnrollmentAndProgress()` | Returns full enrollment + progress data |
 | `submitProgress(milestoneSlug, value)` | Records progress for a milestone |
 
-### `pathNextSDK(config)` — Next.js server-side
+### `pathNextSDK(config?)` — Next.js server-side
 
-Same config as `pathSDK` minus `courseUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
+Optional config: `courseId` (falls back to `PATH_COURSE_ID` env var) and `pathUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
 
 ### `pathNuxtSDK(event, config)` — Nuxt/H3 server-side
 

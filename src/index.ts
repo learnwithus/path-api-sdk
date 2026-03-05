@@ -41,9 +41,13 @@ initTokenFromUrl();
  * ```
  */
 export function pathSDK(config: LearnerAPIConfig) {
-  const pathUrl = config.pathUrl || 'https://path.vchlearn.ca';
+  const env = typeof process !== 'undefined' ? process.env : {} as NodeJS.ProcessEnv;
+  const pathUrl = config.pathUrl ?? env.PATH_URL ?? 'https://path.vchlearn.ca';
   const courseUrl = config.courseUrl;
-  const courseId = config.courseId;
+  const courseId = config.courseId ?? env.NEXT_PUBLIC_PATH_COURSE_ID ?? env.PATH_COURSE_ID ?? '';
+  if (!courseId) {
+    throw new Error('[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.');
+  }
 
   return {
     /**

@@ -107,3 +107,21 @@ export async function pathNextSDK(config: ServerSDKConfig): Promise<ServerSDKIns
 
   return createServerSDK(config, token);
 }
+
+/**
+ * Pre-built Next.js middleware instance. Re-export from your middleware.ts:
+ *
+ * ```ts
+ * // middleware.ts
+ * export { pathMiddleware as default, pathMiddlewareConfig as config } from '@vch-lt/path/next';
+ * ```
+ */
+export const pathMiddleware = createPathMiddleware();
+
+/**
+ * Default middleware matcher config — excludes Next.js internals and static files.
+ * Re-export as `config` from your middleware.ts alongside `pathMiddleware`.
+ */
+export const pathMiddlewareConfig = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
