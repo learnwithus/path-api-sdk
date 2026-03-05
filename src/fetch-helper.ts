@@ -1,3 +1,4 @@
+import { parse, serialize } from 'cookie';
 import type { APIError } from './types.js';
 
 /**
@@ -8,29 +9,36 @@ export interface FetchOptions {
   body?: Record<string, unknown>;
 }
 
-const TOKEN_STORAGE_KEY = 'path_bearer_token';
+export const TOKEN_STORAGE_KEY = 'path_bearer_token';
 let _token: string | null = null;
 
 /**
- * Store the bearer token in memory and localStorage
+ * Store the bearer token in memory and a cookie on the course domain (accessible to SSR).
  */
 export function setToken(token: string | null): void {
   _token = token;
-  if (typeof localStorage !== 'undefined') {
+  if (typeof document !== 'undefined') {
     if (token) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      document.cookie = serialize(TOKEN_STORAGE_KEY, token, {
+        path: '/',
+        sameSite: 'lax',
+        secure: location.protocol === 'https:',
+      });
     } else {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      document.cookie = serialize(TOKEN_STORAGE_KEY, '', {
+        path: '/',
+        expires: new Date(0),
+      });
     }
   }
 }
 
 /**
- * Retrieve the bearer token from memory or localStorage
+ * Retrieve the bearer token from memory or the cookie.
  */
 export function getToken(): string | null {
-  if (!_token && typeof localStorage !== 'undefined') {
-    _token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (!_token && typeof document !== 'undefined') {
+    _token = parse(document.cookie)[TOKEN_STORAGE_KEY] ?? null;
   }
   return _token;
 }

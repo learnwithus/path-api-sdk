@@ -8,7 +8,7 @@ import type {
 import { apiRequest, setToken, getToken } from './fetch-helper.js';
 
 export * from './types.js';
-export { apiRequest, setToken, getToken } from './fetch-helper.js';
+export { apiRequest, setToken, getToken, TOKEN_STORAGE_KEY } from './fetch-helper.js';
 
 /**
  * On load, check the URL query params for a token passed back from the Path login redirect.
