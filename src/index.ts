@@ -11,16 +11,16 @@ export * from './types.js';
 export { apiRequest, setToken, getToken, TOKEN_STORAGE_KEY } from './fetch-helper.js';
 
 /**
- * On load, check the URL query params for a token passed back from the Path login redirect.
+ * On load, check the URL query params for a path-token passed back from the Path login redirect.
  * Stores it in localStorage and removes it from the URL.
  */
 function initTokenFromUrl(): void {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
+  const token = params.get('path-token');
   if (token) {
     setToken(token);
-    params.delete('token');
+    params.delete('path-token');
     const search = params.toString() ? `?${params.toString()}` : '';
     window.history.replaceState(null, '', window.location.pathname + search + window.location.hash);
   }

@@ -10,17 +10,17 @@ export type { ServerSDKConfig } from './server-core.js';
 const PATH_TOKEN_HEADER = 'x-path-token';
 
 /**
- * Next.js middleware that intercepts the ?token= query param on redirect from Path login.
+ * Next.js middleware that intercepts the ?path-token= query param on redirect from Path login.
  *
- * On the first page load after login the bearer token arrives as ?token= in the URL.
+ * On the first page load after login the bearer token arrives as ?path-token= in the URL.
  * Without this middleware, the cookie isn't set until client-side JS runs, so the first
  * SSR render would see an unauthenticated request.
  *
  * This middleware handles it in a single request with no redirect:
- * 1. Reads ?token= from the URL
+ * 1. Reads ?path-token= from the URL
  * 2. Sets the bearer token cookie on the response (available for all future requests)
  * 3. Forwards the token to SSR via an internal x-path-token request header
- * 4. Rewrites the URL to remove ?token= from the browser address bar
+ * 4. Rewrites the URL to remove ?path-token= from the browser address bar
  *
  * @example
  * ```ts
@@ -47,12 +47,12 @@ const PATH_TOKEN_HEADER = 'x-path-token';
 export function createPathMiddleware() {
   return async function pathMiddleware(request: InstanceType<typeof import('next/server').NextRequest>) {
     const { NextResponse } = await import('next/server');
-    const token = request.nextUrl.searchParams.get('token');
+    const token = request.nextUrl.searchParams.get('path-token');
     if (!token) return;
 
-    // Rewrite URL to strip ?token= from the browser address bar
+    // Rewrite URL to strip ?path-token= from the browser address bar
     const url = request.nextUrl.clone();
-    url.searchParams.delete('token');
+    url.searchParams.delete('path-token');
 
     // Forward token to SSR via request header (readable via headers() in Server Components)
     const requestHeaders = new Headers(request.headers);
