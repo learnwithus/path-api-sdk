@@ -1,5 +1,5 @@
-// Minimal type declarations for next/* so tsc doesn't error when next isn't installed.
-// The consuming Next.js app will have full next types available.
+// Minimal type declarations for next/* and h3 so tsc doesn't error when they aren't installed.
+// The consuming app will have full types available.
 declare module 'next/headers' {
   interface RequestCookie {
     name: string;
@@ -13,6 +13,12 @@ declare module 'next/headers' {
   interface ReadonlyHeaders {
     get(name: string): string | null;
   }
+}
+
+declare module 'h3' {
+  export function getCookie(event: any, name: string): string | undefined;
+  export function setCookie(event: any, name: string, value: string, options?: Record<string, unknown>): void;
+  export function getQuery(event: any): Record<string, string | string[] | undefined>;
 }
 
 declare module 'next/server' {

@@ -186,47 +186,85 @@ export async function completeModule(milestoneSlug: string) {
 
 ---
 
-## Generic server-side usage
+## Nuxt (Server Routes + SSR)
 
-Use `@vch-lt/path/server` for Nuxt server routes, Express, or any other server framework. You read the token from your framework's cookie store and pass it in.
+Use `@vch-lt/path/nuxt` for Nuxt server routes and SSR. It automatically reads the bearer token from the H3 event — no token passing required.
 
 ```ts
-import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+import { pathNuxtSDK, createPathH3Middleware } from '@vch-lt/path/nuxt';
 ```
 
-### Nuxt server route
+### Middleware (required for SSR auth on first login)
+
+Without middleware, the bearer token arrives as `?path-token=` in the URL on redirect from Path login. The cookie isn't set until client-side JS runs, so the **first SSR render would see an unauthenticated request**.
+
+`createPathH3Middleware()` fixes this with no extra redirect — it reads `?path-token=`, sets the cookie, and stores the token in the H3 event context so the current render is authenticated immediately.
+
+```ts
+// server/middleware/path-token.ts
+import { createPathH3Middleware } from '@vch-lt/path/nuxt';
+export default createPathH3Middleware();
+```
+
+If you already have server middleware, compose them:
+
+```ts
+import { createPathH3Middleware } from '@vch-lt/path/nuxt';
+const handlePath = createPathH3Middleware();
+
+export default defineEventHandler(async (event) => {
+  await handlePath(event);
+  // ... your own logic
+});
+```
+
+### Server route
 
 ```ts
 // server/api/progress.get.ts
-import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+import { pathNuxtSDK } from '@vch-lt/path/nuxt';
 
 export default defineEventHandler(async (event) => {
-  const token = getCookie(event, TOKEN_STORAGE_KEY) ?? null;
-  const path = pathServerSDK({ courseId: 'your-course-id', token });
+  const path = await pathNuxtSDK(event, { courseId: 'your-course-id' });
   return path.getEnrollmentAndProgress();
 });
 ```
 
-### Nuxt composable (SSR + client)
+### SSR pages via useFetch
+
+For SSR pages, proxy through a server route so the token is read server-side:
 
 ```ts
-// composables/usePath.ts
-import { TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+// server/api/auth.get.ts
+import { pathNuxtSDK } from '@vch-lt/path/nuxt';
 
-export function usePath() {
-  const tokenCookie = useCookie(TOKEN_STORAGE_KEY);
+export default defineEventHandler(async (event) => {
+  const path = await pathNuxtSDK(event, { courseId: 'your-course-id' });
+  return path.checkAuth();
+});
+```
 
-  const checkAuth = async () => {
-    const { data } = await useFetch('/api/learner', {
-      headers: tokenCookie.value
-        ? { Authorization: `Bearer ${tokenCookie.value}` }
-        : {},
-    });
-    return data.value;
-  };
+```vue
+<!-- pages/course.vue -->
+<script setup lang="ts">
+const { data: auth } = await useFetch('/api/auth');
 
-  return { checkAuth };
+if (!auth.value?.isAuthenticated) {
+  await navigateTo('/login');
 }
+</script>
+```
+
+> **Note:** `pathNuxtSDK` is server-only. For client-side interactions (login redirect, logout), use the regular `pathSDK` in your Vue components.
+
+---
+
+## Generic server-side usage
+
+Use `@vch-lt/path/server` for Express or any other server framework. You read the token from your framework's cookie store and pass it in.
+
+```ts
+import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
 ```
 
 ### Express
@@ -269,6 +307,10 @@ Returns an SDK instance with:
 ### `pathNextSDK(config)` — Next.js server-side
 
 Same config as `pathSDK` minus `courseUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
+
+### `pathNuxtSDK(event, config)` — Nuxt server-side
+
+Takes an H3 event and same config as `pathNextSDK`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
 
 ### `pathServerSDK(options)` — generic server-side
 

@@ -17,13 +17,21 @@
     "./server": {
       "import": "./dist/server.js",
       "types": "./dist/server.d.ts"
+    },
+    "./nuxt": {
+      "import": "./dist/nuxt.js",
+      "types": "./dist/nuxt.d.ts"
     }
   },
   "peerDependencies": {
-    "next": ">=13.0.0"
+    "next": ">=13.0.0",
+    "h3": ">=1.0.0"
   },
   "peerDependenciesMeta": {
     "next": {
+      "optional": true
+    },
+    "h3": {
       "optional": true
     }
   },
