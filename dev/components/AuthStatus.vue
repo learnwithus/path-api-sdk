@@ -77,7 +77,7 @@ async function checkAuth() {
 function login() {
   if (!pathInstance) return;
 
-  pathInstance.login();
+  pathInstance.login(window.location.href);
 }
 
 async function logout() {
