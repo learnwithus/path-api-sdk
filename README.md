@@ -93,11 +93,11 @@ Use `@vch-lt/path/next` in Server Components, Route Handlers, and Server Actions
 
 ### Setup
 
-Set your course ID in the environment so you never have to pass it explicitly:
+Set your course ID in the environment so you never have to pass it explicitly. Use `NEXT_PUBLIC_PATH_COURSE_ID` so it's available on both the server and in Client Components:
 
 ```bash
 # .env.local
-PATH_COURSE_ID=your-course-id
+NEXT_PUBLIC_PATH_COURSE_ID=your-course-id
 ```
 
 ### Middleware (required for SSR auth on first login)
@@ -324,7 +324,7 @@ Returns an SDK instance with:
 
 ### `pathServerSDK(config?)` — Next.js server-side
 
-Import from `@vch-lt/path/next`. Optional config: `courseId` (falls back to `PATH_COURSE_ID` env var) and `pathUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
+Import from `@vch-lt/path/next`. Optional config: `courseId` (falls back to `NEXT_PUBLIC_PATH_COURSE_ID` env var) and `pathUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
 
 ### `pathClientSDK(config)` — Next.js client-side
 
