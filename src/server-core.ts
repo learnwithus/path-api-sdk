@@ -1,4 +1,4 @@
-import type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from './types.js';
+import type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 
 export interface ServerSDKConfig {
   /**
@@ -9,30 +9,34 @@ export interface ServerSDKConfig {
   pathUrl?: string;
 }
 
-async function serverFetch<T>(url: string, token: string | null, options: { method?: string; body?: Record<string, unknown> } = {}): Promise<T> {
-  const { method = 'GET', body } = options;
+async function serverFetch<T>(
+  url: string,
+  token: string | null,
+  options: { method?: string; body?: Record<string, unknown> } = {},
+): Promise<T> {
+  const { method = "GET", body } = options;
   const response = await fetch(url, {
     method,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
     },
     ...(body && { body: JSON.stringify(body) }),
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || 'Request failed');
+    const error = await response.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Request failed");
   }
 
   return response.json();
 }
 
 export function createServerSDK(config: ServerSDKConfig, token: string | null) {
-  const pathUrl = config.pathUrl || process.env.PATH_URL || 'https://path.vchlearn.ca';
-  const courseId = config.courseId || process.env.PATH_COURSE_ID || '';
+  const pathUrl = config.pathUrl || process.env.PATH_URL || "https://path.vchlearn.ca";
+  const courseId = config.courseId || process.env.PATH_COURSE_ID || "";
   if (!courseId) {
-    throw new Error('[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.');
+    throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
   }
 
   return {
@@ -41,10 +45,7 @@ export function createServerSDK(config: ServerSDKConfig, token: string | null) {
      */
     checkAuth: async (): Promise<AuthStatus> => {
       try {
-        const enrollment = await serverFetch<Enrollment>(
-          `${pathUrl}/api/learner?courseId=${courseId}`,
-          token
-        );
+        const enrollment = await serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token);
         return { isAuthenticated: true, enrollment };
       } catch {
         return { isAuthenticated: false };
@@ -62,11 +63,10 @@ export function createServerSDK(config: ServerSDKConfig, token: string | null) {
      * Submit progress for a milestone.
      */
     submitProgress: async (milestoneSlug: string, value: MilestoneValue): Promise<SubmitProgressResponse> => {
-      return serverFetch<SubmitProgressResponse>(
-        `${pathUrl}/api/learner?courseId=${courseId}`,
-        token,
-        { method: 'POST', body: { milestoneSlug, value } }
-      );
+      return serverFetch<SubmitProgressResponse>(`${pathUrl}/api/learner?courseId=${courseId}`, token, {
+        method: "POST",
+        body: { milestoneSlug, value },
+      });
     },
   };
 }

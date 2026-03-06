@@ -31,11 +31,11 @@ npm install @vch-lt/path
 Works in any browser environment — vanilla JS, Vue, React, Svelte, etc.
 
 ```ts
-import pathSDK from '@vch-lt/path';
+import pathSDK from "@vch-lt/path";
 
 const path = pathSDK({
-  courseId: 'your-course-id',
-  courseUrl: 'https://your-course-site.com',
+  courseId: "your-course-id",
+  courseUrl: "https://your-course-site.com",
   // pathUrl: 'https://path.vchlearn.ca', // optional, this is the default
 });
 ```
@@ -45,8 +45,8 @@ const path = pathSDK({
 Create the SDK instance as early as possible (e.g., in your app entry point). On first instantiation it automatically reads `?path-token=` from the URL, stores it in a cookie, and removes it from the URL bar.
 
 ```ts
-import pathSDK from '@vch-lt/path';
-const path = pathSDK({ courseId: '...', courseUrl: '...' });
+import pathSDK from "@vch-lt/path";
+const path = pathSDK({ courseId: "...", courseUrl: "..." });
 ```
 
 ### Check authentication
@@ -67,9 +67,9 @@ console.log(auth.enrollment?.progress);
 ### Submit progress
 
 ```ts
-await path.submitProgress('module-1-complete', true);
-await path.submitProgress('quiz-score', 85);
-await path.submitProgress('chapter', 'introduction');
+await path.submitProgress("module-1-complete", true);
+await path.submitProgress("quiz-score", 85);
+await path.submitProgress("chapter", "introduction");
 ```
 
 ### Get enrollment and progress
@@ -108,15 +108,15 @@ The pre-built middleware fixes this with no extra redirect — it reads `?path-t
 
 ```ts
 // middleware.ts
-export { pathMiddleware as default, pathMiddlewareConfig as config } from '@vch-lt/path/next';
+export { pathMiddleware as default, pathMiddlewareConfig as config } from "@vch-lt/path/next";
 ```
 
 If you already have middleware, compose them:
 
 ```ts
 // middleware.ts
-import { createPathMiddleware } from '@vch-lt/path/next';
-import type { NextRequest } from 'next/server';
+import { createPathMiddleware } from "@vch-lt/path/next";
+import type { NextRequest } from "next/server";
 
 const handlePath = createPathMiddleware();
 
@@ -127,7 +127,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 ```
 
@@ -135,15 +135,15 @@ export const config = {
 
 ```tsx
 // app/course/page.tsx
-import { pathNextSDK } from '@vch-lt/path/next';
-import { redirect } from 'next/navigation';
+import { pathNextSDK } from "@vch-lt/path/next";
+import { redirect } from "next/navigation";
 
 export default async function CoursePage() {
   const path = await pathNextSDK(); // courseId read from PATH_COURSE_ID env var
   const auth = await path.checkAuth();
 
   if (!auth.isAuthenticated) {
-    redirect('/login');
+    redirect("/login");
   }
 
   const enrollment = auth.enrollment!;
@@ -160,15 +160,15 @@ export default async function CoursePage() {
 You can also pass `courseId` explicitly if you prefer:
 
 ```tsx
-const path = await pathNextSDK({ courseId: 'your-course-id' });
+const path = await pathNextSDK({ courseId: "your-course-id" });
 ```
 
 ### Route Handler
 
 ```ts
 // app/api/progress/route.ts
-import { pathNextSDK } from '@vch-lt/path/next';
-import { NextResponse } from 'next/server';
+import { pathNextSDK } from "@vch-lt/path/next";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   const path = await pathNextSDK();
@@ -181,8 +181,8 @@ export async function GET() {
 
 ```ts
 // app/actions.ts
-'use server';
-import { pathNextSDK } from '@vch-lt/path/next';
+"use server";
+import { pathNextSDK } from "@vch-lt/path/next";
 
 export async function completeModule(milestoneSlug: string) {
   const path = await pathNextSDK();
@@ -208,9 +208,9 @@ Use `@vch-lt/path/nuxt-module` for zero-config Nuxt integration. The module:
 ```ts
 // nuxt.config.ts
 export default defineNuxtConfig({
-  modules: ['@vch-lt/path/nuxt-module'],
+  modules: ["@vch-lt/path/nuxt-module"],
   path: {
-    courseId: 'your-course-id',
+    courseId: "your-course-id",
     // pathUrl: 'https://path.vchlearn.ca', // optional, this is the default
   },
 });
@@ -240,20 +240,20 @@ if (!auth.value?.isAuthenticated) {
 const path = usePath();
 
 const complete = async () => {
-  await path.submitProgress('module-1', true);
+  await path.submitProgress("module-1", true);
 };
 </script>
 ```
 
 ### `usePath()` methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `checkAuth()` | `AsyncData<AuthStatus>` | Auth status + enrollment. SSR-safe. |
-| `getEnrollmentAndProgress()` | `AsyncData<Enrollment>` | Full enrollment data. SSR-safe. |
-| `submitProgress(slug, value)` | `Promise` | Record a milestone. Works on server and client. |
-| `login(callbackUrl?)` | `void` | Redirect to Path login. Client-only. |
-| `logout()` | `Promise` | Clear session and log out. Client-only. |
+| Method                        | Returns                 | Description                                     |
+| ----------------------------- | ----------------------- | ----------------------------------------------- |
+| `checkAuth()`                 | `AsyncData<AuthStatus>` | Auth status + enrollment. SSR-safe.             |
+| `getEnrollmentAndProgress()`  | `AsyncData<Enrollment>` | Full enrollment data. SSR-safe.                 |
+| `submitProgress(slug, value)` | `Promise`               | Record a milestone. Works on server and client. |
+| `login(callbackUrl?)`         | `void`                  | Redirect to Path login. Client-only.            |
+| `logout()`                    | `Promise`               | Clear session and log out. Client-only.         |
 
 ### Server routes (advanced)
 
@@ -272,7 +272,7 @@ export default defineEventHandler(async (event) => {
 If you need more control, use `@vch-lt/path/nuxt` directly:
 
 ```ts
-import { pathNuxtSDK, createPathH3Middleware } from '@vch-lt/path/nuxt';
+import { pathNuxtSDK, createPathH3Middleware } from "@vch-lt/path/nuxt";
 ```
 
 ---
@@ -282,20 +282,20 @@ import { pathNuxtSDK, createPathH3Middleware } from '@vch-lt/path/nuxt';
 Use `@vch-lt/path/server` for Express or any other server framework. You read the token from your framework's cookie store and pass it in.
 
 ```ts
-import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
+import { pathServerSDK, TOKEN_STORAGE_KEY } from "@vch-lt/path/server";
 ```
 
 ### Express
 
 ```ts
-import { pathServerSDK, TOKEN_STORAGE_KEY } from '@vch-lt/path/server';
-import cookieParser from 'cookie-parser';
+import { pathServerSDK, TOKEN_STORAGE_KEY } from "@vch-lt/path/server";
+import cookieParser from "cookie-parser";
 
 app.use(cookieParser());
 
-app.get('/progress', async (req, res) => {
+app.get("/progress", async (req, res) => {
   const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
-  const path = pathServerSDK({ courseId: 'your-course-id', token });
+  const path = pathServerSDK({ courseId: "your-course-id", token });
   res.json(await path.getEnrollmentAndProgress());
 });
 ```
@@ -306,21 +306,21 @@ app.get('/progress', async (req, res) => {
 
 ### `pathSDK(config)` — client-side
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `courseId` | `string` | No | Your course ID from Path (falls back to `VITE_PATH_COURSE_ID` / `NEXT_PUBLIC_PATH_COURSE_ID` / `PATH_COURSE_ID` env var) |
-| `courseUrl` | `string` | Yes | Your course website URL |
-| `pathUrl` | `string` | No | Path backend URL (default: `https://path.vchlearn.ca`) |
+| Option      | Type     | Required | Description                                                                                                              |
+| ----------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `courseId`  | `string` | No       | Your course ID from Path (falls back to `VITE_PATH_COURSE_ID` / `NEXT_PUBLIC_PATH_COURSE_ID` / `PATH_COURSE_ID` env var) |
+| `courseUrl` | `string` | Yes      | Your course website URL                                                                                                  |
+| `pathUrl`   | `string` | No       | Path backend URL (default: `https://path.vchlearn.ca`)                                                                   |
 
 Returns an SDK instance with:
 
-| Method | Description |
-|--------|-------------|
-| `checkAuth()` | Returns `{ isAuthenticated, enrollment? }` |
-| `login(callbackUrl?)` | Redirects to Path login. Pass `window.location.href` to return to current page |
-| `logout()` | Clears token and calls logout API |
-| `getEnrollmentAndProgress()` | Returns full enrollment + progress data |
-| `submitProgress(milestoneSlug, value)` | Records progress for a milestone |
+| Method                                 | Description                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| `checkAuth()`                          | Returns `{ isAuthenticated, enrollment? }`                                     |
+| `login(callbackUrl?)`                  | Redirects to Path login. Pass `window.location.href` to return to current page |
+| `logout()`                             | Clears token and calls logout API                                              |
+| `getEnrollmentAndProgress()`           | Returns full enrollment + progress data                                        |
+| `submitProgress(milestoneSlug, value)` | Records progress for a milestone                                               |
 
 ### `pathNextSDK(config?)` — Next.js server-side
 

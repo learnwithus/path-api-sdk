@@ -1,7 +1,7 @@
-import { useAsyncData, useRequestEvent, useRuntimeConfig } from '#app';
-import pathSDK from '@vch-lt/path';
-import { pathNuxtSDK as _pathNuxtSDK } from '@vch-lt/path/nuxt';
-import type { MilestoneValue } from '@vch-lt/path';
+import { useAsyncData, useRequestEvent, useRuntimeConfig } from "#app";
+import pathSDK from "@vch-lt/path";
+import { pathNuxtSDK as _pathNuxtSDK } from "@vch-lt/path/nuxt";
+import type { MilestoneValue } from "@vch-lt/path";
 
 function _config() {
   // runtimeConfig.public is available on both server and client
@@ -31,18 +31,14 @@ function _clientSDK() {
 export const usePath = () => ({
   /** Check auth status. SSR-safe — result is shared between server and client render. */
   checkAuth: () =>
-    useAsyncData('path-auth', async () =>
-      import.meta.server
-        ? (await _serverSDK()).checkAuth()
-        : _clientSDK().checkAuth()
+    useAsyncData("path-auth", async () =>
+      import.meta.server ? (await _serverSDK()).checkAuth() : _clientSDK().checkAuth(),
     ),
 
   /** Get full enrollment and progress data. SSR-safe. */
   getEnrollmentAndProgress: () =>
-    useAsyncData('path-enrollment', async () =>
-      import.meta.server
-        ? (await _serverSDK()).getEnrollmentAndProgress()
-        : _clientSDK().getEnrollmentAndProgress()
+    useAsyncData("path-enrollment", async () =>
+      import.meta.server ? (await _serverSDK()).getEnrollmentAndProgress() : _clientSDK().getEnrollmentAndProgress(),
     ),
 
   /** Submit a milestone progress value. Works on server and client. */

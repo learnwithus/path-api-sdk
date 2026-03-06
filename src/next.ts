@@ -3,12 +3,7 @@ import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
-export type {
-  Enrollment,
-  AuthStatus,
-  SubmitProgressResponse,
-  MilestoneValue,
-} from "./types.js";
+export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
 
 // Internal header name used to forward the token from middleware to SSR
@@ -50,9 +45,7 @@ const PATH_TOKEN_HEADER = "x-path-token";
  * ```
  */
 export function createPathMiddleware() {
-  return async function pathMiddleware(
-    request: InstanceType<typeof import("next/server").NextRequest>,
-  ) {
+  return async function pathMiddleware(request: InstanceType<typeof import("next/server").NextRequest>) {
     const { NextResponse } = await import("next/server");
     const token = request.nextUrl.searchParams.get("path-token");
     if (!token) return;
@@ -104,17 +97,12 @@ export function createPathMiddleware() {
  * }
  * ```
  */
-export async function pathNextSDK(
-  config: ServerSDKConfig,
-): Promise<ServerSDKInstance> {
+export async function pathNextSDK(config: ServerSDKConfig): Promise<ServerSDKInstance> {
   const { cookies, headers } = await import("next/headers");
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
 
   // Prefer cookie (set on prior requests); fall back to header (set by middleware on first request)
-  const token =
-    cookieStore.get(TOKEN_STORAGE_KEY)?.value ??
-    headerStore.get(PATH_TOKEN_HEADER) ??
-    null;
+  const token = cookieStore.get(TOKEN_STORAGE_KEY)?.value ?? headerStore.get(PATH_TOKEN_HEADER) ?? null;
 
   return createServerSDK(config, token);
 }
