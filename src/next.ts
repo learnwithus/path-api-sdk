@@ -1,13 +1,18 @@
-import { TOKEN_STORAGE_KEY } from './fetch-helper.js';
-import { createServerSDK } from './server-core.js';
-import type { ServerSDKConfig, ServerSDKInstance } from './server-core.js';
+import { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
+import { createServerSDK } from "./server-core.js";
+import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
-export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from './types.js';
-export type { ServerSDKConfig } from './server-core.js';
+export type {
+  Enrollment,
+  AuthStatus,
+  SubmitProgressResponse,
+  MilestoneValue,
+} from "./types.js";
+export type { ServerSDKConfig } from "./server-core.js";
 
 // Internal header name used to forward the token from middleware to SSR
-const PATH_TOKEN_HEADER = 'x-path-token';
+const PATH_TOKEN_HEADER = "x-path-token";
 
 /**
  * Next.js middleware that intercepts the ?path-token= query param on redirect from Path login.
@@ -45,26 +50,30 @@ const PATH_TOKEN_HEADER = 'x-path-token';
  * ```
  */
 export function createPathMiddleware() {
-  return async function pathMiddleware(request: InstanceType<typeof import('next/server').NextRequest>) {
-    const { NextResponse } = await import('next/server');
-    const token = request.nextUrl.searchParams.get('path-token');
+  return async function pathMiddleware(
+    request: InstanceType<typeof import("next/server").NextRequest>,
+  ) {
+    const { NextResponse } = await import("next/server");
+    const token = request.nextUrl.searchParams.get("path-token");
     if (!token) return;
 
     // Rewrite URL to strip ?path-token= from the browser address bar
     const url = request.nextUrl.clone();
-    url.searchParams.delete('path-token');
+    url.searchParams.delete("path-token");
 
     // Forward token to SSR via request header (readable via headers() in Server Components)
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set(PATH_TOKEN_HEADER, token);
 
-    const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    const response = NextResponse.rewrite(url, {
+      request: { headers: requestHeaders },
+    });
 
     // Set cookie on the response so all subsequent requests include it automatically
     response.cookies.set(TOKEN_STORAGE_KEY, token, {
-      path: '/',
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
     });
 
     return response;
@@ -95,8 +104,10 @@ export function createPathMiddleware() {
  * }
  * ```
  */
-export async function pathNextSDK(config: ServerSDKConfig): Promise<ServerSDKInstance> {
-  const { cookies, headers } = await import('next/headers');
+export async function pathNextSDK(
+  config: ServerSDKConfig,
+): Promise<ServerSDKInstance> {
+  const { cookies, headers } = await import("next/headers");
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
 
   // Prefer cookie (set on prior requests); fall back to header (set by middleware on first request)
@@ -123,5 +134,5 @@ export const pathMiddleware = createPathMiddleware();
  * Re-export as `config` from your middleware.ts alongside `pathMiddleware`.
  */
 export const pathMiddlewareConfig = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
