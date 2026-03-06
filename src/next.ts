@@ -104,7 +104,13 @@ export async function pathNextSDK(config: ServerSDKConfig): Promise<ServerSDKIns
   // Prefer cookie (set on prior requests); fall back to header (set by middleware on first request)
   const token = cookieStore.get(TOKEN_STORAGE_KEY)?.value ?? headerStore.get(PATH_TOKEN_HEADER) ?? null;
 
-  return createServerSDK(config, token);
+  return createServerSDK(config, token, (newToken) => {
+    cookieStore.set(TOKEN_STORAGE_KEY, newToken, {
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+  });
 }
 
 /**

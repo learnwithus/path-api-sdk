@@ -12,6 +12,7 @@ export interface ServerSDKConfig {
 async function serverFetch<T>(
   url: string,
   token: string | null,
+  onTokenRefresh: ((token: string) => void | Promise<void>) | undefined,
   options: { method?: string; body?: Record<string, unknown> } = {},
 ): Promise<T> {
   const { method = "GET", body } = options;
@@ -24,6 +25,9 @@ async function serverFetch<T>(
     ...(body && { body: JSON.stringify(body) }),
   });
 
+  const refreshedToken = response.headers.get("set-auth-token");
+  if (refreshedToken && onTokenRefresh) await onTokenRefresh(refreshedToken);
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: "Request failed" }));
     throw new Error(error.message || "Request failed");
@@ -32,7 +36,11 @@ async function serverFetch<T>(
   return response.json();
 }
 
-export function createServerSDK(config: ServerSDKConfig, token: string | null) {
+export function createServerSDK(
+  config: ServerSDKConfig,
+  token: string | null,
+  onTokenRefresh?: (token: string) => void | Promise<void>,
+) {
   const pathUrl = config.pathUrl || process.env.PATH_URL || "https://path.vchlearn.ca";
   const courseId = config.courseId || process.env.PATH_COURSE_ID || "";
   if (!courseId) {
@@ -45,7 +53,7 @@ export function createServerSDK(config: ServerSDKConfig, token: string | null) {
      */
     checkAuth: async (): Promise<AuthStatus> => {
       try {
-        const enrollment = await serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token);
+        const enrollment = await serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh);
         return { isAuthenticated: true, enrollment };
       } catch {
         return { isAuthenticated: false };
@@ -56,14 +64,14 @@ export function createServerSDK(config: ServerSDKConfig, token: string | null) {
      * Get enrollment and progress data for the current user.
      */
     getEnrollmentAndProgress: async (): Promise<Enrollment> => {
-      return serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token);
+      return serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh);
     },
 
     /**
      * Submit progress for a milestone.
      */
     submitProgress: async (milestoneSlug: string, value: MilestoneValue): Promise<SubmitProgressResponse> => {
-      return serverFetch<SubmitProgressResponse>(`${pathUrl}/api/learner?courseId=${courseId}`, token, {
+      return serverFetch<SubmitProgressResponse>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh, {
         method: "POST",
         body: { milestoneSlug, value },
       });

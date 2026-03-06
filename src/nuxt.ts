@@ -86,10 +86,16 @@ export function createPathH3Middleware() {
  * ```
  */
 export async function pathNuxtSDK(event: any, config: ServerSDKConfig): Promise<ServerSDKInstance> {
-  const { getCookie } = await import("h3");
+  const { getCookie, setCookie } = await import("h3");
 
   // Prefer context (set by middleware on first request); fall back to cookie
   const token: string | null = event.context[PATH_TOKEN_CONTEXT_KEY] ?? getCookie(event, TOKEN_STORAGE_KEY) ?? null;
 
-  return createServerSDK(config, token);
+  return createServerSDK(config, token, (newToken) => {
+    setCookie(event, TOKEN_STORAGE_KEY, newToken, {
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+  });
 }
