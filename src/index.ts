@@ -9,7 +9,7 @@ export { apiRequest, setToken, getToken, TOKEN_STORAGE_KEY } from "./fetch-helpe
  *
  * @example
  * ```typescript
- * export const path = pathSDK({ courseId: "your-course-id-here", courseUrl: "https://your-lms.com" });
+ * export const path = pathSDK({ courseId: "your-course-id-here", courseUrl: "https://your-course-website.com" });
  *
  * // Use the SDK
  * const auth = await path.checkAuth();
