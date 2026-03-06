@@ -11,7 +11,6 @@ export default defineConfig({
         next: resolve(__dirname, "src/next.ts"),
         server: resolve(__dirname, "src/server.ts"),
         nuxt: resolve(__dirname, "src/nuxt.ts"),
-        "nuxt-module": resolve(__dirname, "src/nuxt-module.ts"),
       },
       formats: ["es"],
       fileName: (_format, entryName) => `${entryName}.js`,

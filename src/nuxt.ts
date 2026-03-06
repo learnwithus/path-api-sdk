@@ -1,3 +1,5 @@
+import { defineNuxtModule, createResolver, addImportsDir, addPlugin, addServerHandler } from "@nuxt/kit";
+import type { H3Event } from "h3";
 import { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
 import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
@@ -9,6 +11,63 @@ export { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
 
 // Internal context key for passing token from middleware to route handlers
 const PATH_TOKEN_CONTEXT_KEY = "pathToken";
+
+export interface ModuleOptions {
+  courseId: string;
+  pathUrl?: string;
+}
+
+/**
+ * Nuxt module — add to nuxt.config to enable auto-imports, middleware, and SSR support.
+ *
+ * @example
+ * ```ts
+ * // nuxt.config.ts
+ * export default defineNuxtConfig({
+ *   modules: ['@vch-lt/path/nuxt'],
+ *   path: { courseId: 'your-course-id' },
+ * });
+ * ```
+ */
+export default defineNuxtModule<ModuleOptions>({
+  meta: {
+    name: "@vch-lt/path",
+    configKey: "path",
+  },
+  defaults: {
+    pathUrl: "https://path.vchlearn.ca",
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setup(options: ModuleOptions, nuxt: any) {
+    const { courseId } = options;
+    const pathUrl = options.pathUrl || "https://path.vchlearn.ca";
+
+    if (!courseId) {
+      throw new Error('[@vch-lt/path] courseId is required. Set it in nuxt.config: path: { courseId: "..." }');
+    }
+
+    // Expose config to runtime files via Nuxt's runtimeConfig system
+    nuxt.options.runtimeConfig.public.pathSDK = { courseId, pathUrl };
+
+    // Resolve paths to the runtime files (relative to this file in dist/)
+    const resolver = createResolver(import.meta.url);
+
+    // Auto-register the path-token → cookie server middleware
+    addServerHandler({
+      middleware: true,
+      handler: resolver.resolve("./nuxt-runtime/server/middleware/path-token"),
+    });
+
+    // Auto-import usePath composable from the runtime directory
+    addImportsDir(resolver.resolve("./nuxt-runtime/composables"));
+
+    // Client plugin: read ?path-token= from URL on first load after login
+    addPlugin({
+      src: resolver.resolve("./nuxt-runtime/plugin.client"),
+      mode: "client",
+    });
+  },
+});
 
 /**
  * Nuxt/H3 server middleware that intercepts the ?path-token= query param on redirect from Path login.
@@ -40,7 +99,7 @@ const PATH_TOKEN_CONTEXT_KEY = "pathToken";
  * ```
  */
 export function createPathH3Middleware() {
-  return async function pathMiddleware(event: any) {
+  return async function pathMiddleware(event: H3Event) {
     const { getCookie, setCookie, getQuery } = await import("h3");
     const query = getQuery(event);
     const token = typeof query["path-token"] === "string" ? query["path-token"] : undefined;
@@ -54,7 +113,8 @@ export function createPathH3Middleware() {
     });
 
     // Store in event context so the current SSR render is authenticated without a redirect
-    event.context[PATH_TOKEN_CONTEXT_KEY] = token;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (event as any).context[PATH_TOKEN_CONTEXT_KEY] = token;
   };
 }
 
@@ -85,11 +145,12 @@ export function createPathH3Middleware() {
  * });
  * ```
  */
-export async function pathNuxtSDK(event: any, config: ServerSDKConfig): Promise<ServerSDKInstance> {
+export async function pathNuxtSDK(event: H3Event, config: ServerSDKConfig): Promise<ServerSDKInstance> {
   const { getCookie, setCookie } = await import("h3");
 
   // Prefer context (set by middleware on first request); fall back to cookie
-  const token: string | null = event.context[PATH_TOKEN_CONTEXT_KEY] ?? getCookie(event, TOKEN_STORAGE_KEY) ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const token: string | null = (event as any).context[PATH_TOKEN_CONTEXT_KEY] ?? getCookie(event, TOKEN_STORAGE_KEY) ?? null;
 
   return createServerSDK(config, token, (newToken) => {
     setCookie(event, TOKEN_STORAGE_KEY, newToken, {
