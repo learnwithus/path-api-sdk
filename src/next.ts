@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
 import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
@@ -45,7 +46,7 @@ const PATH_TOKEN_HEADER = "x-path-token";
  * ```
  */
 export function createPathMiddleware() {
-  return async function pathMiddleware(request: InstanceType<typeof import("next/server").NextRequest>) {
+  return async function pathMiddleware(request: NextRequest) {
     const { NextResponse } = await import("next/server");
     const token = request.nextUrl.searchParams.get("path-token");
     if (!token) return;
@@ -105,7 +106,9 @@ export async function pathNextSDK(config: ServerSDKConfig): Promise<ServerSDKIns
   const token = cookieStore.get(TOKEN_STORAGE_KEY)?.value ?? headerStore.get(PATH_TOKEN_HEADER) ?? null;
 
   return createServerSDK(config, token, (newToken) => {
-    cookieStore.set(TOKEN_STORAGE_KEY, newToken, {
+    // cookies() returns ReadonlyRequestCookies in types but supports .set() in Route Handlers/Server Actions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (cookieStore as any).set(TOKEN_STORAGE_KEY, newToken, {
       path: "/",
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
