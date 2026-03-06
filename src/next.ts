@@ -6,6 +6,7 @@ import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 export type { ServerSDKInstance };
 export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
+export { default as pathClientSDK } from "./index.js";
 
 // Internal header name used to forward the token from middleware to SSR
 const PATH_TOKEN_HEADER = "x-path-token";
@@ -84,10 +85,10 @@ export function createPathMiddleware() {
  * @example
  * ```tsx
  * // app/page.tsx (Server Component)
- * import { pathNextSDK } from '@vch-lt/path/next';
+ * import { pathServerSDK } from '@vch-lt/path/next';
  *
  * export default async function CoursePage() {
- *   const path = await pathNextSDK({ courseId: 'your-course-id' });
+ *   const path = await pathServerSDK({ courseId: 'your-course-id' });
  *   const auth = await path.checkAuth();
  *
  *   if (!auth.isAuthenticated) {
@@ -98,7 +99,7 @@ export function createPathMiddleware() {
  * }
  * ```
  */
-export async function pathNextSDK(config: ServerSDKConfig): Promise<ServerSDKInstance> {
+export async function pathServerSDK(config: ServerSDKConfig): Promise<ServerSDKInstance> {
   const { cookies, headers } = await import("next/headers");
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
 

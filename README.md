@@ -135,11 +135,11 @@ export const config = {
 
 ```tsx
 // app/course/page.tsx
-import { pathNextSDK } from "@vch-lt/path/next";
+import { pathServerSDK } from "@vch-lt/path/next";
 import { redirect } from "next/navigation";
 
 export default async function CoursePage() {
-  const path = await pathNextSDK(); // courseId read from PATH_COURSE_ID env var
+  const path = await pathServerSDK(); // courseId read from PATH_COURSE_ID env var
   const auth = await path.checkAuth();
 
   if (!auth.isAuthenticated) {
@@ -160,18 +160,18 @@ export default async function CoursePage() {
 You can also pass `courseId` explicitly if you prefer:
 
 ```tsx
-const path = await pathNextSDK({ courseId: "your-course-id" });
+const path = await pathServerSDK({ courseId: "your-course-id" });
 ```
 
 ### Route Handler
 
 ```ts
 // app/api/progress/route.ts
-import { pathNextSDK } from "@vch-lt/path/next";
+import { pathServerSDK } from "@vch-lt/path/next";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const path = await pathNextSDK();
+  const path = await pathServerSDK();
   const enrollment = await path.getEnrollmentAndProgress();
   return NextResponse.json(enrollment);
 }
@@ -182,21 +182,21 @@ export async function GET() {
 ```ts
 // app/actions.ts
 "use server";
-import { pathNextSDK } from "@vch-lt/path/next";
+import { pathServerSDK } from "@vch-lt/path/next";
 
 export async function completeModule(milestoneSlug: string) {
-  const path = await pathNextSDK();
+  const path = await pathServerSDK();
   return path.submitProgress(milestoneSlug, true);
 }
 ```
 
-> **Note:** `pathNextSDK` is server-only. For client-side interactions (login redirect, logout), use the regular `pathSDK` in a Client Component.
+> **Note:** `pathServerSDK` is server-only. For client-side interactions (login redirect, logout), use `pathClientSDK` (also exported from `@vch-lt/path/next`) in a Client Component.
 
 ---
 
 ## Nuxt Module (recommended for Nuxt apps)
 
-Use `@vch-lt/path/nuxt-module` for zero-config Nuxt integration. The module:
+Use `@vch-lt/path/nuxt` for zero-config Nuxt integration. The module:
 
 - Auto-registers the path-token middleware (SSR auth on first login, no extra redirect)
 - Auto-imports `usePath()` — a universal composable that works on server and client transparently
@@ -208,7 +208,7 @@ Use `@vch-lt/path/nuxt-module` for zero-config Nuxt integration. The module:
 ```ts
 // nuxt.config.ts
 export default defineNuxtConfig({
-  modules: ["@vch-lt/path/nuxt-module"],
+  modules: ["@vch-lt/path/nuxt"],
   path: {
     courseId: "your-course-id",
     // pathUrl: 'https://path.vchlearn.ca', // optional, this is the default
@@ -322,13 +322,17 @@ Returns an SDK instance with:
 | `getEnrollmentAndProgress()`           | Returns full enrollment + progress data                                        |
 | `submitProgress(milestoneSlug, value)` | Records progress for a milestone                                               |
 
-### `pathNextSDK(config?)` — Next.js server-side
+### `pathServerSDK(config?)` — Next.js server-side
 
-Optional config: `courseId` (falls back to `PATH_COURSE_ID` env var) and `pathUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
+Import from `@vch-lt/path/next`. Optional config: `courseId` (falls back to `PATH_COURSE_ID` env var) and `pathUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
+
+### `pathClientSDK(config)` — Next.js client-side
+
+Import from `@vch-lt/path/next`. Same as the default `pathSDK` export from `@vch-lt/path`, re-exported for convenience. Use in Client Components for login, logout, and client-side data fetching.
 
 ### `pathNuxtSDK(event, config)` — Nuxt/H3 server-side
 
-Takes an H3 event and same config as `pathNextSDK`. Returns a Promise of a server SDK instance. When using the Nuxt module, `pathNuxtSDK(event)` is auto-imported with `courseId` pre-configured.
+Import from `@vch-lt/path/nuxt`. Takes an H3 event and optional config (`courseId`, `pathUrl`). Returns a Promise of a server SDK instance. When using the Nuxt module, `pathNuxtSDK(event)` is auto-imported with `courseId` pre-configured.
 
 ### `usePath()` — Nuxt universal composable (Nuxt module only)
 
@@ -336,7 +340,7 @@ Auto-imported. Works in pages, components, and layouts on both server and client
 
 ### `pathServerSDK(options)` — generic server-side
 
-Same config as `pathNextSDK` plus `token: string | null`. Synchronous — returns the SDK instance directly.
+Import from `@vch-lt/path/server`. Takes `courseId`, `pathUrl`, and `token: string | null`. Synchronous — returns the SDK instance directly.
 
 ---
 
