@@ -2,8 +2,6 @@ import { parse, serialize } from "cookie";
 import type { APIError } from "./types.js";
 import { TOKEN_STORAGE_KEY } from "./constants.js";
 
-export { TOKEN_STORAGE_KEY };
-
 /**
  * Options for making API requests
  */

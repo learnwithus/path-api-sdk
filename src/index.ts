@@ -2,7 +2,8 @@ import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressResponse, 
 import { apiRequest, setToken, getToken } from "./fetch-helper.js";
 
 export * from "./types.js";
-export { apiRequest, setToken, getToken, TOKEN_STORAGE_KEY } from "./fetch-helper.js";
+export { apiRequest, setToken, getToken } from "./fetch-helper.js";
+export { TOKEN_STORAGE_KEY } from "./constants.js";
 
 /**
  * Factory function to create a Path SDK instance

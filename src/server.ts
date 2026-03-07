@@ -4,7 +4,7 @@ import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 export type { ServerSDKInstance };
 export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
-export { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
+export { TOKEN_STORAGE_KEY } from "./constants.js";
 
 export interface ServerSDKOptions extends ServerSDKConfig {
   /**
