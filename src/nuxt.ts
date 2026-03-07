@@ -1,13 +1,13 @@
 import { defineNuxtModule, createResolver, addImportsDir, addPlugin, addServerHandler } from "@nuxt/kit";
 import type { H3Event } from "h3";
-import { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
+import { TOKEN_STORAGE_KEY } from "./constants.js";
 import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
 export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
-export { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
+export { TOKEN_STORAGE_KEY } from "./constants.js";
 
 // Internal context key for passing token from middleware to route handlers
 const PATH_TOKEN_CONTEXT_KEY = "pathToken";

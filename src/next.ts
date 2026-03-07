@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { TOKEN_STORAGE_KEY } from "./fetch-helper.js";
+import { TOKEN_STORAGE_KEY } from "./constants.js";
 import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 

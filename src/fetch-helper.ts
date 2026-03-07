@@ -1,5 +1,8 @@
 import { parse, serialize } from "cookie";
 import type { APIError } from "./types.js";
+import { TOKEN_STORAGE_KEY } from "./constants.js";
+
+export { TOKEN_STORAGE_KEY };
 
 /**
  * Options for making API requests
@@ -8,8 +11,6 @@ export interface FetchOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: Record<string, unknown>;
 }
-
-export const TOKEN_STORAGE_KEY = "path_bearer_token";
 let _token: string | null = null;
 
 /**
