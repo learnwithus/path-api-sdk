@@ -10,7 +10,7 @@ import { pathSDK } from "@vch-lt/path";
 // Create the API instance once
 export const path = pathSDK({
   courseId: "your-course-id",
-  courseUrl: "https://localhost:5500",
+  courseUrl: "http://localhost:5500",
 });
 
 // Use it anywhere in your app
