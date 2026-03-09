@@ -3,12 +3,7 @@
     <h2>Submit Progress</h2>
     <div class="form-group">
       <label for="milestoneSlug">Milestone Slug:</label>
-      <input
-        type="text"
-        id="milestoneSlug"
-        v-model="milestoneSlug"
-        placeholder="e.g., module-1-complete"
-      />
+      <input type="text" id="milestoneSlug" v-model="milestoneSlug" placeholder="e.g., module-1-complete" />
     </div>
     <div class="form-group">
       <label for="progressValue">Value:</label>
@@ -18,16 +13,10 @@
         v-model="progressValue"
         placeholder="e.g., true, 'Completed', 95, or {score: 95}"
       />
-      <div class="hint">
-        Enter any value. JSON will be parsed, otherwise treated as string.
-      </div>
+      <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string.</div>
     </div>
     <div class="form-group">
-      <button
-        id="submitProgressBtn"
-        @click="submitProgress"
-        :disabled="loading"
-      >
+      <button id="submitProgressBtn" @click="submitProgress" :disabled="loading">
         {{ loading ? "Submitting..." : "Submit Progress" }}
       </button>
     </div>
@@ -37,7 +26,9 @@
       <div v-if="loading">Submitting progress...</div>
 
       <!-- Validation Error -->
-      <div v-else-if="validationError" class="error">{{ validationError }}</div>
+      <div v-else-if="validationError" class="error">
+        {{ validationError }}
+      </div>
 
       <!-- Success State -->
       <div v-else-if="result" class="success">
@@ -48,7 +39,10 @@
           <div style="margin-left: 15px">
             <div>Progress ID: {{ result.progress.id }}</div>
             <div>User ID: {{ result.progress.userId }}</div>
-            <div>Milestone ID: {{ result.progress.courseMilestoneId }}</div>
+            <div>
+              Milestone ID:
+              {{ result.progress.courseMilestoneId }}
+            </div>
             <div>Value: {{ result.progress.value }}</div>
             <div>
               Created:
@@ -58,9 +52,7 @@
         </div>
 
         <details style="margin-top: 20px">
-          <summary style="cursor: pointer; font-weight: bold">
-            Full Response (JSON)
-          </summary>
+          <summary style="cursor: pointer; font-weight: bold">Full Response (JSON)</summary>
           <pre
             style="
               margin-top: 10px;
@@ -83,9 +75,7 @@
           <ul style="margin: 5px 0; padding-left: 20px">
             <li>You're not signed in</li>
             <li>You're not enrolled in the course</li>
-            <li v-if="milestoneSlug">
-              The milestone slug {{ milestoneSlug }} doesn't exist
-            </li>
+            <li v-if="milestoneSlug">The milestone slug {{ milestoneSlug }} doesn't exist</li>
             <li>The milestone doesn't belong to this course</li>
             <li>The value type doesn't match the milestone's expected type</li>
             <li>CORS origin mismatch</li>
@@ -100,8 +90,8 @@
 import { ref } from "vue";
 import type { PathSDKInstance, SubmitProgressResponse } from "../../src/index";
 
-const props = defineProps<{
-  pathInstance: PathSDKInstance;
+const { pathInstance } = defineProps<{
+  pathInstance?: PathSDKInstance;
 }>();
 
 const emit = defineEmits<{
@@ -116,6 +106,10 @@ const result = ref<SubmitProgressResponse | null>(null);
 const apiError = ref<string | null>(null);
 
 async function submitProgress() {
+  if (!pathInstance) {
+    return;
+  }
+
   // Clear previous states
   validationError.value = null;
   result.value = null;
@@ -143,10 +137,7 @@ async function submitProgress() {
   loading.value = true;
 
   try {
-    const response = await props.pathInstance.submitProgress(
-      milestoneSlug.value,
-      parsedValue,
-    );
+    const response = await pathInstance.submitProgress(milestoneSlug.value, parsedValue);
     result.value = response;
     console.log("Progress submitted:", response);
 

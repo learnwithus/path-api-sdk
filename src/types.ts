@@ -63,9 +63,10 @@ export type MilestoneValue = boolean | string | number | unknown[] | Record<stri
  */
 export interface LearnerAPIConfig {
   /**
-   * Course ID for the learner
+   * Course ID for the learner.
+   * Can be omitted if PATH_COURSE_ID or NEXT_PUBLIC_PATH_COURSE_ID is set in the environment.
    */
-  courseId: string;
+  courseId?: string;
 
   /**
    * Path backend URL (default: https://path.vchlearn.ca)

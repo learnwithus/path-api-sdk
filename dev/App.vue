@@ -5,31 +5,21 @@
     <div class="section">
       <div class="form-group">
         <label for="progressCourseId">Course ID:</label>
-        <input
-          type="text"
-          id="progressCourseId"
-          v-model="courseId"
-          placeholder="Enter course ID"
-        />
+        <input type="text" id="progressCourseId" v-model="courseId" placeholder="Enter course ID" />
       </div>
     </div>
 
-    <AuthStatus
-      ref="authStatusRef"
-      :path-instance="pathInstance"
-      @auth-changed="onAuthChanged"
-    />
+    <AuthStatus ref="authStatusRef" :path-instance="pathInstance" @auth-changed="onAuthChanged" />
 
     <ProgressDisplay ref="progressDisplayRef" :path-instance="pathInstance" />
 
-    <ProgressSubmit
-      :path-instance="pathInstance"
-      @progress-submitted="onProgressSubmitted"
-    />
+    <ProgressSubmit :path-instance="pathInstance" @progress-submitted="onProgressSubmitted" />
   </div>
 </template>
 
 <script setup lang="ts">
+/// <reference types="vite/client" />
+
 import { ref, watch, computed, nextTick } from "vue";
 import { pathSDK } from "../src/index";
 import AuthStatus from "./components/AuthStatus.vue";
@@ -57,6 +47,7 @@ const pathUrl = import.meta.env.VITE_PATH_URL;
 
 // Create path SDK instance - reactive based on courseId
 const pathInstance = computed(() => {
+  if (!courseId.value) return undefined;
   return pathSDK({
     pathUrl: pathUrl ?? "http://localhost:3000",
     courseId: courseId.value,

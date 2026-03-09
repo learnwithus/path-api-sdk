@@ -1,13 +1,6 @@
 <template>
   <div class="section">
-    <div
-      style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-      "
-    >
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px">
       <h2 style="margin: 0">User Enrollment & Progress</h2>
       <button id="loadProgressBtn" @click="loadProgress" :disabled="loading">
         {{ loading ? "Loading..." : "Load Progress" }}
@@ -35,16 +28,11 @@
           <div style="margin-left: 15px">
             <div>ID: {{ enrollment.course.id }}</div>
             <div>Title: {{ enrollment.course.title }}</div>
-            <div v-if="enrollment.course.description">
-              Description: {{ enrollment.course.description }}
-            </div>
+            <div v-if="enrollment.course.description">Description: {{ enrollment.course.description }}</div>
           </div>
         </div>
 
-        <div
-          v-if="enrollment.progress && enrollment.progress.length > 0"
-          style="margin-top: 15px"
-        >
+        <div v-if="enrollment.progress && enrollment.progress.length > 0" style="margin-top: 15px">
           <strong>Progress Records ({{ enrollment.progress.length }}):</strong>
           <div
             v-for="progress in enrollment.progress"
@@ -61,7 +49,8 @@
             <div>Milestone ID: {{ progress.courseMilestoneId }}</div>
             <div>Value: {{ progress.value }}</div>
             <div>
-              Created: {{ new Date(progress.createdAt).toLocaleString() }}
+              Created:
+              {{ new Date(progress.createdAt).toLocaleString() }}
             </div>
           </div>
         </div>
@@ -70,9 +59,7 @@
         </div>
 
         <details style="margin-top: 20px">
-          <summary style="cursor: pointer; font-weight: bold">
-            Full Response (JSON)
-          </summary>
+          <summary style="cursor: pointer; font-weight: bold">Full Response (JSON)</summary>
           <pre
             style="
               margin-top: 10px;
@@ -87,9 +74,7 @@
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="error">
-        <strong>✗ Error:</strong> {{ error }}
-      </div>
+      <div v-else-if="error" class="error"><strong>✗ Error:</strong> {{ error }}</div>
     </div>
   </div>
 </template>
@@ -98,8 +83,8 @@
 import { ref } from "vue";
 import type { PathSDKInstance, Enrollment } from "../../src/index";
 
-const props = defineProps<{
-  pathInstance: PathSDKInstance;
+const { pathInstance } = defineProps<{
+  pathInstance?: PathSDKInstance;
 }>();
 
 const loading = ref(false);
@@ -107,12 +92,14 @@ const enrollment = ref<Enrollment | null>(null);
 const error = ref<string | null>(null);
 
 async function loadProgress() {
+  if (!pathInstance) return;
+
   loading.value = true;
   enrollment.value = null;
   error.value = null;
 
   try {
-    const info = await props.pathInstance.getEnrollmentAndProgress();
+    const info = await pathInstance.getEnrollmentAndProgress();
     enrollment.value = info;
     console.log("Enrollment & progress:", info);
   } catch (err: any) {

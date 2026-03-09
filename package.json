@@ -1,13 +1,47 @@
 {
   "name": "@vch-lt/path",
-  "version": "0.1.4",
+  "version": "0.2.3",
   "description": "TypeScript SDK for integrating custom course websites with Path patient tracking software (VCH)",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./next": {
+      "import": "./dist/next.js",
+      "types": "./dist/next.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    },
+    "./nuxt": {
+      "import": "./dist/nuxt.js",
+      "types": "./dist/nuxt.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "h3": ">=1.0.0",
+    "next": ">=13.0.0",
+    "nuxt": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "h3": {
+      "optional": true
+    },
+    "nuxt": {
+      "optional": true
+    }
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc --emitDeclarationOnly",
+    "build": "vite build && tsc --emitDeclarationOnly && cp -r src/nuxt-runtime dist/nuxt-runtime",
     "preview": "vite preview",
     "prepublishOnly": "npm run build"
   },
@@ -37,12 +71,18 @@
   "author": "Learn With Us",
   "license": "ISC",
   "devDependencies": {
+    "@nuxt/kit": "^4.3.1",
+    "@types/cookie": "^0.6.0",
     "@types/node": "^25.0.3",
-    "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitejs/plugin-vue": "^6.0.3",
+    "h3": "^1.15.5",
+    "next": "^16.1.6",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vue": "^3.5.27"
+  },
+  "dependencies": {
+    "cookie": "^1.1.1"
   }
 }
