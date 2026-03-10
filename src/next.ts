@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { TOKEN_STORAGE_KEY } from "./constants.js";
 import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
@@ -6,10 +6,11 @@ import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 export type { ServerSDKInstance };
 export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
-export { default as pathClientSDK } from "./index.js";
 
-// Internal header name used to forward the token from middleware to SSR
-const PATH_TOKEN_HEADER = "x-path-token";
+// Re-export the client-side SDK so Next.js projects can import everything from one entry point
+export { pathSDK as pathClientSDK, default as default } from "./index.js";
+export type { PathSDKInstance } from "./index.js";
+
 
 /**
  * Next.js middleware that intercepts the ?path-token= query param on redirect from Path login.
@@ -48,23 +49,16 @@ const PATH_TOKEN_HEADER = "x-path-token";
  */
 export function createPathMiddleware() {
   return async function pathMiddleware(request: NextRequest) {
-    const { NextResponse } = await import("next/server");
     const token = request.nextUrl.searchParams.get("path-token");
     if (!token) return;
 
-    // Rewrite URL to strip ?path-token= from the browser address bar
+    // Redirect to the same URL without ?path-token= so the token doesn't stay in the browser address bar.
+    // The cookie is set on the redirect response, so it will be available on the next request.
     const url = request.nextUrl.clone();
     url.searchParams.delete("path-token");
 
-    // Forward token to SSR via request header (readable via headers() in Server Components)
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set(PATH_TOKEN_HEADER, token);
+    const response = NextResponse.redirect(url);
 
-    const response = NextResponse.rewrite(url, {
-      request: { headers: requestHeaders },
-    });
-
-    // Set cookie on the response so all subsequent requests include it automatically
     response.cookies.set(TOKEN_STORAGE_KEY, token, {
       path: "/",
       sameSite: "lax",
@@ -99,14 +93,13 @@ export function createPathMiddleware() {
  * }
  * ```
  */
-export async function pathServerSDK(config: ServerSDKConfig): Promise<ServerSDKInstance> {
-  const { cookies, headers } = await import("next/headers");
-  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+export async function pathServerSDK(config: ServerSDKConfig) {
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
 
-  // Prefer cookie (set on prior requests); fall back to header (set by middleware on first request)
-  const token = cookieStore.get(TOKEN_STORAGE_KEY)?.value ?? headerStore.get(PATH_TOKEN_HEADER) ?? null;
+  const token = cookieStore.get(TOKEN_STORAGE_KEY)?.value ?? null;
 
-  return createServerSDK(config, token, (newToken) => {
+  const sdk = createServerSDK(config, token, (newToken) => {
     // cookies() returns ReadonlyRequestCookies in types but supports .set() in Route Handlers/Server Actions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (cookieStore as any).set(TOKEN_STORAGE_KEY, newToken, {
@@ -115,6 +108,27 @@ export async function pathServerSDK(config: ServerSDKConfig): Promise<ServerSDKI
       secure: process.env.NODE_ENV === "production",
     });
   });
+
+  return {
+    ...sdk,
+    /**
+     * Redirect to the Path login page. Call this in a Server Component, Route Handler,
+     * or Server Action — it uses Next.js `redirect()` internally.
+     *
+     * @param callbackUrl - URL to return to after login. Defaults to `courseUrl` from config.
+     *
+     * @example
+     * ```ts
+     * const path = await pathServerSDK({ courseId: 'your-course-id', courseUrl: 'https://your-site.com' });
+     * const auth = await path.checkAuth();
+     * if (!auth.isAuthenticated) await path.login();
+     * ```
+     */
+    login: async (callbackUrl?: string): Promise<never> => {
+      const { redirect } = await import("next/navigation");
+      return redirect(sdk.getLoginUrl(callbackUrl));
+    },
+  };
 }
 
 /**
