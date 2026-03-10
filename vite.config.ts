@@ -20,7 +20,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       // Framework deps are provided by the consuming app — don't bundle them
-      external: ["next/headers", "h3", "@nuxt/kit"],
+      external: ["next/headers", "next/server", "next/navigation", "h3", "@nuxt/kit"],
     },
   },
 
