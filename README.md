@@ -195,7 +195,19 @@ export async function completeModule(milestoneSlug: string) {
 }
 ```
 
-> **Note:** `pathServerSDK` is server-only. For client-side interactions (login redirect, logout), use `pathSDK` from `@vch-lt/path` in a Client Component.
+> **Note:** `pathServerSDK` is server-only. For client-side interactions (login redirect, logout), use `pathClientSDK` from `@vch-lt/path/next` (or `pathSDK` from `@vch-lt/path`) in a Client Component:
+>
+> ```tsx
+> // app/components/LoginButton.tsx
+> "use client";
+> import { pathClientSDK } from "@vch-lt/path/next";
+>
+> const path = pathClientSDK({ pathUrl: "https://path.vchlearn.ca" });
+>
+> export function LoginButton() {
+>   return <button onClick={() => path.login(location.href)}>Login</button>;
+> }
+> ```
 
 ---
 
