@@ -7,6 +7,10 @@ export interface ServerSDKConfig {
    */
   courseId?: string;
   pathUrl?: string;
+  /**
+   * Your course website URL, used as the default callback after login.
+   */
+  courseUrl?: string;
 }
 
 async function serverFetch<T>(
@@ -42,12 +46,33 @@ export function createServerSDK(
   onTokenRefresh?: (token: string) => void | Promise<void>,
 ) {
   const pathUrl = config.pathUrl || process.env.PATH_URL || "https://path.vchlearn.ca";
-  const courseId = config.courseId || process.env.PATH_COURSE_ID || "";
+  const courseId = config.courseId || process.env.NEXT_PUBLIC_PATH_COURSE_ID || process.env.PATH_COURSE_ID || "";
+  const courseUrl = config.courseUrl || process.env.NEXT_PUBLIC_PATH_COURSE_URL || process.env.COURSE_URL || "";
   if (!courseId) {
     throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
   }
 
   return {
+    /**
+     * Build the Path login URL. Pass the result to Next.js `redirect()` (from `next/navigation`)
+     * or use it in a `NextResponse.redirect()` in middleware.
+     *
+     * @param callbackUrl - URL to return to after login. Defaults to `courseUrl` from config.
+     *
+     * @example
+     * ```ts
+     * import { redirect } from 'next/navigation';
+     *
+     * const path = await pathServerSDK({ courseId: 'your-course-id', courseUrl: 'https://your-site.com' });
+     * const auth = await path.checkAuth();
+     * if (!auth.isAuthenticated) redirect(path.getLoginUrl());
+     * ```
+     */
+    getLoginUrl: (callbackUrl?: string): string => {
+      const callback = encodeURIComponent(callbackUrl || courseUrl);
+      return `${pathUrl}/learner/login?courseId=${courseId}&callbackUrl=${callback}`;
+    },
+
     /**
      * Check authentication status and return enrollment data if authenticated.
      */
