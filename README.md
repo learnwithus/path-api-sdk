@@ -98,13 +98,14 @@ Set your course ID in the environment so you never have to pass it explicitly. U
 ```bash
 # .env.local
 NEXT_PUBLIC_PATH_COURSE_ID=your-course-id
+NEXT_PUBLIC_PATH_COURSE_URL=https://your-course-site.com
 ```
 
 ### Middleware (required for SSR auth on first login)
 
 Without middleware, the bearer token arrives as `?path-token=` in the URL on redirect from Path login. The cookie isn't set until client-side JS runs, so the **first SSR render would see an unauthenticated request**.
 
-The pre-built middleware fixes this with no extra redirect — it reads `?path-token=`, sets the cookie, and forwards the token to SSR all in one request.
+The pre-built middleware fixes this by reading `?path-token=`, setting the cookie on a redirect response, and cleaning the token from the URL bar. The browser follows the redirect to the clean URL with the cookie already set, so the SSR render sees an authenticated request.
 
 ```ts
 // middleware.ts
@@ -133,10 +134,14 @@ export const config = {
 
 ### Server Component
 
+> **Required:** Pages that call `pathServerSDK` must use `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
+
 ```tsx
 // app/course/page.tsx
 import { pathServerSDK } from "@vch-lt/path/next";
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 export default async function CoursePage() {
   const path = await pathServerSDK(); // courseId read from PATH_COURSE_ID env var
@@ -190,7 +195,7 @@ export async function completeModule(milestoneSlug: string) {
 }
 ```
 
-> **Note:** `pathServerSDK` is server-only. For client-side interactions (login redirect, logout), use `pathClientSDK` (also exported from `@vch-lt/path/next`) in a Client Component.
+> **Note:** `pathServerSDK` is server-only. For client-side interactions (login redirect, logout), use `pathSDK` from `@vch-lt/path` in a Client Component.
 
 ---
 
@@ -324,11 +329,19 @@ Returns an SDK instance with:
 
 ### `pathServerSDK(config?)` — Next.js server-side
 
-Import from `@vch-lt/path/next`. Optional config: `courseId` (falls back to `NEXT_PUBLIC_PATH_COURSE_ID` env var) and `pathUrl`. Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, and `submitProgress()`.
+Import from `@vch-lt/path/next`. All config fields are optional and fall back to environment variables:
 
-### `pathClientSDK(config)` — Next.js client-side
+| Option      | Env var fallbacks                                              | Description                            |
+| ----------- | -------------------------------------------------------------- | -------------------------------------- |
+| `courseId`  | `NEXT_PUBLIC_PATH_COURSE_ID`, `PATH_COURSE_ID`                 | Your course ID from Path               |
+| `courseUrl` | `NEXT_PUBLIC_PATH_COURSE_URL`, `COURSE_URL`                    | Your course URL (used for login redirect) |
+| `pathUrl`   | `PATH_URL`                                                     | Path backend URL (default: `https://path.vchlearn.ca`) |
 
-Import from `@vch-lt/path/next`. Same as the default `pathSDK` export from `@vch-lt/path`, re-exported for convenience. Use in Client Components for login, logout, and client-side data fetching.
+Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, `submitProgress()`, `getLoginUrl()`, and `login()`.
+
+### `pathSDK(config)` — Next.js client-side
+
+Import from `@vch-lt/path`. Use in Client Components for login, logout, and client-side data fetching.
 
 ### `pathNuxtSDK(event, config)` — Nuxt/H3 server-side
 
