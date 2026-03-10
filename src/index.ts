@@ -30,13 +30,26 @@ export function pathSDK(config: LearnerAPIConfig) {
     }
   }
 
-  const env = typeof process !== "undefined" ? process.env : ({} as NodeJS.ProcessEnv);
-  // import.meta.env is Vite's way of exposing VITE_-prefixed env vars to the browser
+  // import.meta.env is Vite's way of exposing VITE_-prefixed env vars to the browser.
+  // process.env.NEXT_PUBLIC_* must be referenced as a literal expression so Next.js webpack can inline them.
   const meta = typeof import.meta !== "undefined" ? ((import.meta as { env?: Record<string, string> }).env ?? {}) : {};
-  const pathUrl = config.pathUrl ?? meta.VITE_PATH_URL ?? env.PATH_URL ?? "https://path.vchlearn.ca";
-  const courseUrl = config.courseUrl;
+  const pathUrl =
+    config.pathUrl ??
+    meta.VITE_PATH_URL ??
+    (typeof process !== "undefined" ? process.env.PATH_URL : undefined) ??
+    "https://path.vchlearn.ca";
+  const courseUrl =
+    config.courseUrl ||
+    meta.VITE_PATH_COURSE_URL ||
+    (typeof process !== "undefined" ? process.env.NEXT_PUBLIC_PATH_COURSE_URL : undefined) ||
+    (typeof process !== "undefined" ? process.env.COURSE_URL : undefined) ||
+    "";
   const courseId =
-    config.courseId || meta.VITE_PATH_COURSE_ID || env.NEXT_PUBLIC_PATH_COURSE_ID || env.PATH_COURSE_ID || "";
+    config.courseId ||
+    meta.VITE_PATH_COURSE_ID ||
+    (typeof process !== "undefined" ? process.env.NEXT_PUBLIC_PATH_COURSE_ID : undefined) ||
+    (typeof process !== "undefined" ? process.env.PATH_COURSE_ID : undefined) ||
+    "";
   if (!courseId) {
     throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
   }
