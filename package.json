@@ -1,26 +1,30 @@
 {
   "name": "@vch-lt/path",
-  "version": "0.2.3",
+  "version": "0.2.8",
   "description": "TypeScript SDK for integrating custom course websites with Path patient tracking software (VCH)",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "default": "./dist/index.js"
     },
     "./next": {
+      "types": "./dist/next.d.ts",
       "import": "./dist/next.js",
-      "types": "./dist/next.d.ts"
+      "default": "./dist/next.js"
     },
     "./server": {
+      "types": "./dist/server.d.ts",
       "import": "./dist/server.js",
-      "types": "./dist/server.d.ts"
+      "default": "./dist/server.js"
     },
     "./nuxt": {
+      "types": "./dist/nuxt.d.ts",
       "import": "./dist/nuxt.js",
-      "types": "./dist/nuxt.d.ts"
+      "default": "./dist/nuxt.js"
     }
   },
   "peerDependencies": {
