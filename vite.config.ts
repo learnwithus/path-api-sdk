@@ -8,7 +8,8 @@ export default defineConfig({
     lib: {
       entry: {
         index: resolve(__dirname, "src/index.ts"),
-        next: resolve(__dirname, "src/next.ts"),
+        "next-server": resolve(__dirname, "src/next-server.ts"),
+        "next-client": resolve(__dirname, "src/next-client.ts"),
         server: resolve(__dirname, "src/server.ts"),
         nuxt: resolve(__dirname, "src/nuxt.ts"),
       },
@@ -20,7 +21,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       // Framework deps are provided by the consuming app — don't bundle them
-      external: ["next/headers", "next/server", "next/navigation", "h3", "@nuxt/kit"],
+      external: ["next/headers", "next/server", "next/navigation", "h3", "@nuxt/kit", "react"],
     },
   },
 
