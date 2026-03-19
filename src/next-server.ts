@@ -1,7 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { createElement } from "react";
+import type { ReactNode } from "react";
 import { TOKEN_STORAGE_KEY } from "./constants.js";
 import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
+import { PathProviderClient } from "./next-client.js";
 
 export type { ServerSDKInstance };
 export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
@@ -144,3 +147,55 @@ export const pathMiddleware = createPathMiddleware();
 export const pathMiddlewareConfig = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
+
+// ---------------------------------------------------------------------------
+// PathProvider — async Server Component
+// ---------------------------------------------------------------------------
+
+export interface PathProviderProps {
+  children: ReactNode;
+  /** Path backend URL (default: https://path.vchlearn.ca) */
+  pathUrl?: string;
+  /** Course ID. Falls back to NEXT_PUBLIC_PATH_COURSE_ID env var. */
+  courseId?: string;
+  /** Course URL. Falls back to NEXT_PUBLIC_PATH_COURSE_URL env var. */
+  courseUrl?: string;
+  /**
+   * Fetch auth on the server and hydrate the client (default: true).
+   * Set to false to skip — the client will fetch on mount instead.
+   */
+  initialAuth?: boolean;
+}
+
+/**
+ * Async Server Component that fetches auth and provides reactive state to the tree.
+ * Place this in your root layout — all nested Client Components can use `usePath()`.
+ *
+ * @example
+ * ```tsx
+ * // app/layout.tsx
+ * import { PathProvider } from '@vch-lt/path/next';
+ *
+ * export const dynamic = 'force-dynamic';
+ *
+ * export default async function RootLayout({ children }) {
+ *   return (
+ *     <html><body>
+ *       <PathProvider>{children}</PathProvider>
+ *     </body></html>
+ *   );
+ * }
+ * ```
+ */
+export async function PathProvider({
+  children,
+  initialAuth: enableInitialAuth = true,
+  ...config
+}: PathProviderProps) {
+  let auth;
+  if (enableInitialAuth) {
+    const sdk = await pathServerSDK(config);
+    auth = await sdk.checkAuth();
+  }
+  return createElement(PathProviderClient, { initialAuth: auth, config }, children);
+}

@@ -2,18 +2,33 @@
  * User information
  */
 export interface User {
-  id: number;
+  id: string;
+  name?: string;
   email?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 /**
  * Course information
  */
 export interface Course {
-  id: number;
+  id: string;
   title: string;
-  description?: string;
+}
+
+/**
+ * Course milestone definition
+ */
+export interface Milestone {
+  id: number;
+  courseId: string;
+  title: string;
+  slug: string;
+  type: string;
+  order: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -21,20 +36,22 @@ export interface Course {
  */
 export interface Progress {
   id: number;
-  userId: number;
+  userId: string;
   courseMilestoneId: number;
-  value: string;
+  value: MilestoneValue;
+  updatedBy: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 /**
- * Enrollment information with user, course, and progress
+ * Enrollment information with user, course, milestones, and progress
  */
 export interface Enrollment {
-  id: number;
   user: User;
   course: Course;
-  progress?: Progress[];
+  milestones: Milestone[];
+  progress: Progress[];
 }
 
 /**
@@ -56,7 +73,7 @@ export interface SubmitProgressResponse {
 /**
  * Milestone value types
  */
-export type MilestoneValue = boolean | string | number | unknown[] | Record<string, unknown>;
+export type MilestoneValue = boolean | number | string | Array<string | number>;
 
 /**
  * Configuration options for Path SDK
