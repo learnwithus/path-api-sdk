@@ -1,9 +1,26 @@
-import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
+import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue, Progress } from "./types.js";
 import { apiRequest, setToken, getToken } from "./fetch-helper.js";
 
 export * from "./types.js";
 export { apiRequest, setToken, getToken } from "./fetch-helper.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
+
+/**
+ * Look up a progress record by milestone slug.
+ * Cross-references the milestones array (slug → id) with the progress array (courseMilestoneId).
+ *
+ * @example
+ * ```ts
+ * const enrollment = await path.getEnrollmentAndProgress();
+ * const module1 = getProgress(enrollment, "module-1-completion");
+ * console.log(module1?.value); // "true"
+ * ```
+ */
+export function getProgress(enrollment: Enrollment, milestoneSlug: string): Progress | undefined {
+  const milestone = enrollment.milestones.find((m) => m.slug === milestoneSlug);
+  if (!milestone) return undefined;
+  return enrollment.progress.find((p) => p.courseMilestoneId === milestone.id);
+}
 
 /**
  * Factory function to create a Path SDK instance

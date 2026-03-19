@@ -1,7 +1,7 @@
 import { useAsyncData, useRequestEvent, useRuntimeConfig } from "#app";
-import pathSDK from "@vch-lt/path";
+import pathSDK, { getProgress as _getProgress } from "@vch-lt/path";
 import { pathNuxtSDK as _pathNuxtSDK } from "@vch-lt/path/nuxt";
-import type { MilestoneValue } from "@vch-lt/path";
+import type { MilestoneValue, Enrollment } from "@vch-lt/path";
 
 function _config() {
   // runtimeConfig.public is available on both server and client
@@ -56,4 +56,8 @@ export const usePath = () => ({
   logout: async () => {
     if (import.meta.client) await _clientSDK().logout();
   },
+
+  /** Look up a progress record by milestone slug. Requires enrollment data. */
+  getProgress: (enrollment: Enrollment, milestoneSlug: string) =>
+    _getProgress(enrollment, milestoneSlug),
 });

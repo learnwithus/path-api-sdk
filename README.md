@@ -134,26 +134,21 @@ export const config = {
 
 ### PathProvider (recommended: place in your layout)
 
-Add `PathProvider` to your root layout. The server component fetches auth and passes it as `initialAuth` — the provider hydrates it into a reactive client-side store. Then `usePath()` works in any nested client component.
+Add `PathProvider` to your root layout. It automatically fetches auth on the server and hydrates the client with reactive state. Then `usePath()` works in any nested client component.
 
-> **Required:** Layouts/pages that call `pathServerSDK` must use `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
+> **Required:** Layouts/pages using `PathProvider` must use `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
 
 ```tsx
 // app/layout.tsx
-import { pathServerSDK, PathProvider } from "@vch-lt/path/next";
+import { PathProvider } from "@vch-lt/path/next";
 
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const path = await pathServerSDK();
-  const auth = await path.checkAuth();
-
   return (
     <html lang="en">
       <body>
-        <PathProvider initialAuth={auth}>
-          {children}
-        </PathProvider>
+        <PathProvider>{children}</PathProvider>
       </body>
     </html>
   );
@@ -184,7 +179,14 @@ export function ProgressButton() {
 
 When `submitProgress()` succeeds, the progress array updates reactively — every component using `usePath()` re-renders with the new data.
 
-If `initialAuth` is omitted, the provider fetches auth on mount (useful for fully client-side apps).
+**Props:**
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `pathUrl` | `string` | `https://path.vchlearn.ca` | Path backend URL |
+| `courseId` | `string` | `NEXT_PUBLIC_PATH_COURSE_ID` env var | Your course ID |
+| `courseUrl` | `string` | `NEXT_PUBLIC_PATH_COURSE_URL` env var | Your course URL |
+| `initialAuth` | `boolean` | `true` | Set to `false` to skip server-side fetch — the client fetches on mount instead |
 
 ### `usePath()` return value
 
@@ -192,10 +194,24 @@ If `initialAuth` is omitted, the provider fetches auth on mount (useful for full
 | --- | --- | --- |
 | `auth` | `AuthStatus` | Reactive auth state (updates after `submitProgress` / `logout` / `refreshAuth`) |
 | `isLoading` | `boolean` | `true` while the initial fetch is in-flight (only when no `initialAuth`) |
+| `getProgress(slug)` | `Progress \| undefined` | Look up a progress record by milestone slug |
 | `submitProgress(slug, value)` | `Promise<SubmitProgressResponse>` | Submit progress and update local state on success |
 | `login(callbackUrl?)` | `void` | Redirect to Path login |
 | `logout()` | `Promise<void>` | Log out and clear state |
 | `refreshAuth()` | `Promise<void>` | Re-fetch auth from the server |
+
+`getProgress` cross-references the `milestones` array (slug → id) with the `progress` array, so you can look up progress by slug:
+
+```tsx
+const { getProgress, submitProgress } = usePath();
+
+// Read progress
+const module1 = getProgress("module-1-completion");
+console.log(module1?.value); // "true"
+
+// After submitting, getProgress returns the updated value on the next render
+await submitProgress("module-1-completion", true);
+```
 
 ### Route Handler
 
@@ -353,6 +369,17 @@ Returns an SDK instance with:
 | `getEnrollmentAndProgress()`           | Returns full enrollment + progress data                                        |
 | `submitProgress(milestoneSlug, value)` | Records progress for a milestone                                               |
 
+### `getProgress(enrollment, slug)` — cross-platform utility
+
+Import from `@vch-lt/path` (or `@vch-lt/path/next`). Looks up a progress record by milestone slug by cross-referencing the `milestones` and `progress` arrays on the enrollment object. Returns `Progress | undefined`.
+
+```ts
+import { getProgress } from "@vch-lt/path";
+
+const enrollment = await path.getEnrollmentAndProgress();
+const module1 = getProgress(enrollment, "module-1-completion");
+```
+
 ### `pathServerSDK(config?)` — Next.js server-side
 
 Import from `@vch-lt/path/next`. All config fields are optional and fall back to environment variables:
@@ -365,9 +392,13 @@ Import from `@vch-lt/path/next`. All config fields are optional and fall back to
 
 Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, `submitProgress()`, `getLoginUrl()`, and `login()`.
 
-### `PathProvider` / `usePath()` — Next.js reactive client state
+### `PathProvider` — Next.js async Server Component
 
-Import from `@vch-lt/path/next` in Client Components. `PathProvider` accepts optional `initialAuth` (from server) and `config` props. `usePath()` returns reactive `auth`, `isLoading`, `submitProgress()`, `login()`, `logout()`, and `refreshAuth()`. See the [Next.js section](#nextjs-app-router) for full usage.
+Import from `@vch-lt/path/next`. Place in your root layout — automatically fetches auth on the server and provides reactive state to all client components via `usePath()`. Accepts optional `pathUrl`, `courseId`, `courseUrl`, and `initialAuth` (boolean, default `true`) props. See the [Next.js section](#nextjs-app-router) for full usage.
+
+### `usePath()` — Next.js reactive client hook
+
+Import from `@vch-lt/path/next` in Client Components. Returns reactive `auth`, `isLoading`, `submitProgress()`, `login()`, `logout()`, and `refreshAuth()`. Must be used within a `<PathProvider>` tree.
 
 ### `pathClientSDK(config)` — Next.js client-side (low-level)
 

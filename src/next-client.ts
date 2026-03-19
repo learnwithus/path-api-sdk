@@ -11,12 +11,13 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { pathSDK } from "./index.js";
+import { pathSDK, getProgress as _getProgress } from "./index.js";
 import type {
   AuthStatus,
   Enrollment,
   LearnerAPIConfig,
   MilestoneValue,
+  Progress,
   SubmitProgressResponse,
 } from "./types.js";
 
@@ -27,10 +28,10 @@ export type {
   MilestoneValue,
   SubmitProgressResponse,
 } from "./types.js";
-export type { Progress, User, Course } from "./types.js";
+export type { Progress, User, Course, Milestone } from "./types.js";
 
-// Re-export the client-side SDK for direct use in Client Components
-export { pathSDK as pathClientSDK } from "./index.js";
+// Re-export the client-side SDK and utilities for direct use in Client Components
+export { pathSDK as pathClientSDK, getProgress } from "./index.js";
 export type { PathSDKInstance } from "./index.js";
 
 // ---------------------------------------------------------------------------
@@ -40,6 +41,7 @@ export type { PathSDKInstance } from "./index.js";
 interface PathContextValue {
   auth: AuthStatus;
   isLoading: boolean;
+  getProgress: (milestoneSlug: string) => Progress | undefined;
   submitProgress: (milestoneSlug: string, value: MilestoneValue) => Promise<SubmitProgressResponse>;
   login: (callbackUrl?: string) => void;
   logout: () => Promise<void>;
@@ -52,19 +54,22 @@ const PathContext = createContext<PathContextValue | null>(null);
 // Provider
 // ---------------------------------------------------------------------------
 
-export interface PathProviderProps {
+export interface PathProviderClientProps {
   /** Server-fetched auth status for hydration. If omitted, fetches on mount. */
   initialAuth?: AuthStatus;
   /** SDK configuration. Falls back to NEXT_PUBLIC_* env vars if omitted. */
-  config?: LearnerAPIConfig;
-  children: ReactNode;
+  config?: Partial<LearnerAPIConfig>;
+  children?: ReactNode;
 }
 
-export function PathProvider({ initialAuth, config, children }: PathProviderProps) {
+export function PathProviderClient({ initialAuth, config, children }: PathProviderClientProps) {
   // Create SDK instance once
   const sdkRef = useRef<ReturnType<typeof pathSDK> | null>(null);
   if (sdkRef.current === null) {
-    sdkRef.current = pathSDK(config ?? ({ courseUrl: "" } as LearnerAPIConfig));
+    sdkRef.current = pathSDK({
+      courseUrl: typeof window !== "undefined" ? window.location.origin : "",
+      ...config,
+    } as LearnerAPIConfig);
   }
   const sdk = sdkRef.current;
 
@@ -122,16 +127,25 @@ export function PathProvider({ initialAuth, config, children }: PathProviderProp
     setAuth({ isAuthenticated: false });
   }, [sdk]);
 
+  const getProgress = useCallback(
+    (milestoneSlug: string): Progress | undefined => {
+      if (!auth.enrollment) return undefined;
+      return _getProgress(auth.enrollment, milestoneSlug);
+    },
+    [auth],
+  );
+
   const value = useMemo<PathContextValue>(
     () => ({
       auth,
       isLoading,
+      getProgress,
       submitProgress,
       login: sdk.login,
       logout,
       refreshAuth,
     }),
-    [auth, isLoading, submitProgress, sdk.login, logout, refreshAuth],
+    [auth, isLoading, getProgress, submitProgress, sdk.login, logout, refreshAuth],
   );
 
   return createElement(PathContext.Provider, { value }, children);
