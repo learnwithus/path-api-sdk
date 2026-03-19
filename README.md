@@ -87,9 +87,9 @@ await path.logout();
 
 ---
 
-## Next.js App Router (Server Components)
+## Next.js App Router
 
-Use `@vch-lt/path/next` in Server Components, Route Handlers, and Server Actions. It automatically reads the bearer token from the Next.js cookie store — no token passing required.
+Everything imports from `@vch-lt/path/next` — server SDK, middleware, `PathProvider`, and `usePath()` all come from the same import path. The package uses a barrel that re-exports from separate server and client modules, so the Next.js bundler automatically handles the `"use client"` boundary.
 
 ### Setup
 
@@ -132,41 +132,70 @@ export const config = {
 };
 ```
 
-### Server Component
+### PathProvider (recommended: place in your layout)
 
-> **Required:** Pages that call `pathServerSDK` must use `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
+Add `PathProvider` to your root layout. The server component fetches auth and passes it as `initialAuth` — the provider hydrates it into a reactive client-side store. Then `usePath()` works in any nested client component.
+
+> **Required:** Layouts/pages that call `pathServerSDK` must use `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
 
 ```tsx
-// app/course/page.tsx
-import { pathServerSDK } from "@vch-lt/path/next";
-import { redirect } from "next/navigation";
+// app/layout.tsx
+import { pathServerSDK, PathProvider } from "@vch-lt/path/next";
 
 export const dynamic = "force-dynamic";
 
-export default async function CoursePage() {
-  const path = await pathServerSDK(); // courseId read from PATH_COURSE_ID env var
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const path = await pathServerSDK();
   const auth = await path.checkAuth();
 
-  if (!auth.isAuthenticated) {
-    redirect("/login");
-  }
+  return (
+    <html lang="en">
+      <body>
+        <PathProvider initialAuth={auth}>
+          {children}
+        </PathProvider>
+      </body>
+    </html>
+  );
+}
+```
 
-  const enrollment = auth.enrollment!;
+Now any client component can use `usePath()`:
+
+```tsx
+// app/components/progress-button.tsx
+"use client";
+import { usePath } from "@vch-lt/path/next";
+
+export function ProgressButton() {
+  const { auth, submitProgress } = usePath();
+  const progress = auth.enrollment?.progress ?? [];
 
   return (
     <div>
-      <h1>Welcome, {enrollment.user.email}</h1>
-      <p>Progress: {enrollment.progress?.length ?? 0} milestones completed</p>
+      <p>{progress.length} milestones completed</p>
+      <button onClick={() => submitProgress("module-1", true)}>
+        Complete Module 1
+      </button>
     </div>
   );
 }
 ```
 
-You can also pass `courseId` explicitly if you prefer:
+When `submitProgress()` succeeds, the progress array updates reactively — every component using `usePath()` re-renders with the new data.
 
-```tsx
-const path = await pathServerSDK({ courseId: "your-course-id" });
-```
+If `initialAuth` is omitted, the provider fetches auth on mount (useful for fully client-side apps).
+
+### `usePath()` return value
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `auth` | `AuthStatus` | Reactive auth state (updates after `submitProgress` / `logout` / `refreshAuth`) |
+| `isLoading` | `boolean` | `true` while the initial fetch is in-flight (only when no `initialAuth`) |
+| `submitProgress(slug, value)` | `Promise<SubmitProgressResponse>` | Submit progress and update local state on success |
+| `login(callbackUrl?)` | `void` | Redirect to Path login |
+| `logout()` | `Promise<void>` | Log out and clear state |
+| `refreshAuth()` | `Promise<void>` | Re-fetch auth from the server |
 
 ### Route Handler
 
@@ -193,21 +222,6 @@ export async function completeModule(milestoneSlug: string) {
   const path = await pathServerSDK();
   return path.submitProgress(milestoneSlug, true);
 }
-```
-
-> **Note:** `pathServerSDK` is server-only. For client-side interactions (login redirect, logout), use `pathClientSDK` from `@vch-lt/path/next` (or `pathSDK` from `@vch-lt/path`) in a Client Component:
->
-> ```tsx
-> // app/components/LoginButton.tsx
-> "use client";
-> import { pathClientSDK } from "@vch-lt/path/next";
->
-> const path = pathClientSDK({ pathUrl: "https://path.vchlearn.ca" });
->
-> export function LoginButton() {
->   return <button onClick={() => path.login(location.href)}>Login</button>;
-> }
-> ```
 
 ---
 
@@ -351,9 +365,13 @@ Import from `@vch-lt/path/next`. All config fields are optional and fall back to
 
 Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, `submitProgress()`, `getLoginUrl()`, and `login()`.
 
-### `pathSDK(config)` — Next.js client-side
+### `PathProvider` / `usePath()` — Next.js reactive client state
 
-Import from `@vch-lt/path`. Use in Client Components for login, logout, and client-side data fetching.
+Import from `@vch-lt/path/next` in Client Components. `PathProvider` accepts optional `initialAuth` (from server) and `config` props. `usePath()` returns reactive `auth`, `isLoading`, `submitProgress()`, `login()`, `logout()`, and `refreshAuth()`. See the [Next.js section](#nextjs-app-router) for full usage.
+
+### `pathClientSDK(config)` — Next.js client-side (low-level)
+
+Import from `@vch-lt/path/next`. Re-export of `pathSDK` for direct use in Client Components without the reactive provider.
 
 ### `pathNuxtSDK(event, config)` — Nuxt/H3 server-side
 
