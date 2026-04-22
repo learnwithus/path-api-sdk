@@ -1,13 +1,14 @@
 import { defineNuxtModule, createResolver, addImportsDir, addPlugin, addServerHandler } from "@nuxt/kit";
 import type { H3Event } from "h3";
 import { TOKEN_STORAGE_KEY } from "./constants.js";
-import { createServerSDK } from "./server-core.js";
+import { createServerSDK, exchangeHandoffCode } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
 export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
+export { exchangeHandoffCode };
 
 // Internal context key for passing token from middleware to route handlers
 const PATH_TOKEN_CONTEXT_KEY = "pathToken";
@@ -98,12 +99,20 @@ export default defineNuxtModule<ModuleOptions>({
  * });
  * ```
  */
-export function createPathH3Middleware() {
+export function createPathH3Middleware(config: ServerSDKConfig = {}) {
   return async function pathMiddleware(event: H3Event) {
     const { getCookie, setCookie, getQuery } = await import("h3");
     const query = getQuery(event);
-    const token = typeof query["path-token"] === "string" ? query["path-token"] : undefined;
-    if (!token) return;
+    const code = typeof query["path-code"] === "string" ? query["path-code"] : undefined;
+    if (!code) return;
+
+    const pathUrl = config.pathUrl || process.env.PATH_URL || "https://path.vchlearn.ca";
+    const courseId = config.courseId || process.env.NEXT_PUBLIC_PATH_COURSE_ID || process.env.PATH_COURSE_ID || "";
+    if (!courseId) {
+      throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
+    }
+
+    const token = await exchangeHandoffCode(pathUrl, courseId, code);
 
     // Set cookie for all future requests
     setCookie(event, TOKEN_STORAGE_KEY, token, {

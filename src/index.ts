@@ -1,8 +1,8 @@
 import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue, Progress } from "./types.js";
-import { apiRequest, setToken, getToken } from "./fetch-helper.js";
+import { apiRequest, setToken, getToken, initializeTokenFromCode } from "./fetch-helper.js";
 
 export * from "./types.js";
-export { apiRequest, setToken, getToken } from "./fetch-helper.js";
+export { apiRequest, setToken, getToken, initializeTokenFromCode } from "./fetch-helper.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
 
 /**
@@ -35,18 +35,6 @@ export function getProgress(enrollment: Enrollment, milestoneSlug: string): Prog
  * ```
  */
 export function pathSDK(config: LearnerAPIConfig) {
-  // Read ?path-token= from the URL on first SDK instantiation (login redirect)
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get("path-token");
-    if (urlToken) {
-      setToken(urlToken);
-      params.delete("path-token");
-      const search = params.toString() ? `?${params.toString()}` : "";
-      window.history.replaceState(null, "", window.location.pathname + search + window.location.hash);
-    }
-  }
-
   // import.meta.env is Vite's way of exposing VITE_-prefixed env vars to the browser.
   // process.env.NEXT_PUBLIC_* must be referenced as a literal expression so Next.js webpack can inline them.
   const meta = typeof import.meta !== "undefined" ? ((import.meta as { env?: Record<string, string> }).env ?? {}) : {};
@@ -69,6 +57,19 @@ export function pathSDK(config: LearnerAPIConfig) {
     "";
   if (!courseId) {
     throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
+  }
+
+  // Read ?path-code= from the URL on first SDK instantiation (login redirect).
+  // The code is one-time and short-lived; exchange it for the bearer token before API calls.
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("path-code");
+    if (code) {
+      void initializeTokenFromCode(pathUrl, courseId, code);
+      params.delete("path-code");
+      const search = params.toString() ? `?${params.toString()}` : "";
+      window.history.replaceState(null, "", window.location.pathname + search + window.location.hash);
+    }
   }
 
   return {

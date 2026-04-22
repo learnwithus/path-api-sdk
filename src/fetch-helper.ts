@@ -10,6 +10,7 @@ export interface FetchOptions {
   body?: Record<string, unknown>;
 }
 let _token: string | null = null;
+let _tokenInit: Promise<void> | null = null;
 
 /**
  * Store the bearer token in memory and a cookie on the course domain (accessible to SSR).
@@ -43,6 +44,38 @@ export function getToken(): string | null {
 }
 
 /**
+ * Exchange a short-lived handoff code from the Path login redirect for a bearer token.
+ */
+export function initializeTokenFromCode(pathUrl: string, courseId: string, code: string): Promise<void> {
+  _tokenInit = (async () => {
+    const url = new URL(`${pathUrl}/api/learner/exchange-code`);
+    url.searchParams.set("courseId", courseId);
+
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ code }),
+    });
+
+    if (!response.ok) {
+      const error = await parseError(response);
+      throw new Error(error.message || "Failed to exchange Path login code");
+    }
+
+    const result = (await response.json()) as { token?: string };
+    if (!result.token) {
+      throw new Error("Path login code exchange returned no token");
+    }
+
+    setToken(result.token);
+  })();
+
+  return _tokenInit;
+}
+
+/**
  * Parse error response from API
  */
 async function parseError(response: Response): Promise<APIError> {
@@ -70,6 +103,7 @@ async function parseError(response: Response): Promise<APIError> {
  */
 export async function apiRequest<T = unknown>(url: string, options: FetchOptions = {}): Promise<T> {
   const { method = "GET", body } = options;
+  if (_tokenInit) await _tokenInit;
   const token = getToken();
 
   const response = await fetch(url, {

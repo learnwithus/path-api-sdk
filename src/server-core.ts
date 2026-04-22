@@ -13,6 +13,31 @@ export interface ServerSDKConfig {
   courseUrl?: string;
 }
 
+export async function exchangeHandoffCode(pathUrl: string, courseId: string, code: string): Promise<string> {
+  const url = new URL(`${pathUrl}/api/learner/exchange-code`);
+  url.searchParams.set("courseId", courseId);
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Failed to exchange Path login code" }));
+    throw new Error(error.message || "Failed to exchange Path login code");
+  }
+
+  const result = (await response.json()) as { token?: string };
+  if (!result.token) {
+    throw new Error("Path login code exchange returned no token");
+  }
+
+  return result.token;
+}
+
 async function serverFetch<T>(
   url: string,
   token: string | null,

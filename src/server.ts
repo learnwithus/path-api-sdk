@@ -1,10 +1,11 @@
-import { createServerSDK } from "./server-core.js";
+import { createServerSDK, exchangeHandoffCode } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
 export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
+export { exchangeHandoffCode };
 
 export interface ServerSDKOptions extends ServerSDKConfig {
   /**
