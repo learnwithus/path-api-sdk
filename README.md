@@ -93,13 +93,55 @@ Everything imports from `@vch-lt/path/next` — server SDK, middleware, `PathPro
 
 ### Setup
 
-Set your course ID in the environment so you never have to pass it explicitly. Use `NEXT_PUBLIC_PATH_COURSE_ID` so it's available on both the server and in Client Components:
+There are two ways to provide your course ID. Which one you use depends on your deployment model.
+
+#### Option A — explicit props (recommended for Docker / CI)
+
+Pass `courseId` and `courseUrl` directly as props to `PathProvider` from a Server Component, reading them from non-prefixed env vars:
+
+```tsx
+// app/layout.tsx
+import { PathProvider } from "@vch-lt/path/next";
+
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <PathProvider
+          courseId={process.env.PATH_COURSE_ID}
+          courseUrl={process.env.PATH_COURSE_URL}
+        >
+          {children}
+        </PathProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+```bash
+# .env.local / docker-compose env
+PATH_COURSE_ID=your-course-id
+PATH_COURSE_URL=https://your-course-site.com
+```
+
+This works because `PathProvider` is a Server Component that runs on every request and reads the real environment at runtime. It serializes `courseId` into the `config` prop it passes to the client — so the client SDK receives it without ever needing `process.env` in the browser. No `NEXT_PUBLIC_` prefix needed.
+
+> **Why this matters in Docker**: `NEXT_PUBLIC_*` vars are baked into the JS bundle at `next build`. If the value isn't present when the image is built, it compiles to `undefined` and no amount of runtime env configuration can change it. Non-prefixed vars are never touched by the compiler, so they remain readable from `process.env` at request time on your server.
+
+#### Option B — `NEXT_PUBLIC_*` env vars (fine for static / single-environment deploys)
 
 ```bash
 # .env.local
 NEXT_PUBLIC_PATH_COURSE_ID=your-course-id
 NEXT_PUBLIC_PATH_COURSE_URL=https://your-course-site.com
 ```
+
+`PathProvider` will pick these up automatically with no props needed. This is appropriate when your course ID is a build-time constant — the same value across all environments and never injected at deploy time. If your CI build args include these values and they never change between environments, the bake-in behaviour is harmless.
+
+If you're not sure which applies to you: use Option A. It works in both cases.
 
 ### Middleware (required for SSR auth on first login)
 
@@ -134,26 +176,9 @@ export const config = {
 
 ### PathProvider (recommended: place in your layout)
 
-Add `PathProvider` to your root layout. It automatically fetches auth on the server and hydrates the client with reactive state. Then `usePath()` works in any nested client component.
+Add `PathProvider` to your root layout (see [Setup](#setup) above for the full layout example). It automatically fetches auth on the server and hydrates the client with reactive state. Then `usePath()` works in any nested client component.
 
-> **Required:** Layouts/pages using `PathProvider` must use `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
-
-```tsx
-// app/layout.tsx
-import { PathProvider } from "@vch-lt/path/next";
-
-export const dynamic = "force-dynamic";
-
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        <PathProvider>{children}</PathProvider>
-      </body>
-    </html>
-  );
-}
-```
+> **Required:** Your layout must export `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
 
 Now any client component can use `usePath()`:
 
@@ -184,8 +209,8 @@ When `submitProgress()` succeeds, the progress array updates reactively — ever
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `pathUrl` | `string` | `https://path.vchlearn.ca` | Path backend URL |
-| `courseId` | `string` | `NEXT_PUBLIC_PATH_COURSE_ID` env var | Your course ID |
-| `courseUrl` | `string` | `NEXT_PUBLIC_PATH_COURSE_URL` env var | Your course URL |
+| `courseId` | `string` | `NEXT_PUBLIC_PATH_COURSE_ID` env var | Your course ID. Prefer passing explicitly in Docker — see [Setup](#setup) |
+| `courseUrl` | `string` | `NEXT_PUBLIC_PATH_COURSE_URL` env var | Your course URL. Prefer passing explicitly in Docker — see [Setup](#setup) |
 | `initialAuth` | `boolean` | `true` | Set to `false` to skip server-side fetch — the client fetches on mount instead |
 
 ### `usePath()` return value
