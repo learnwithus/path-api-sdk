@@ -49,7 +49,7 @@ const pathUrl = import.meta.env.VITE_PATH_URL;
 const pathInstance = computed(() => {
   if (!courseId.value) return undefined;
   return pathSDK({
-    pathUrl: pathUrl ?? "http://localhost:3000",
+    pathUrl: pathUrl ?? "http://localhost:9474",
     courseId: courseId.value,
     courseUrl: window.location.origin,
   });
