@@ -90,5 +90,8 @@ export async function apiRequest<T = unknown>(url: string, options: FetchOptions
     throw new Error(error.message || "Request failed");
   }
 
-  return await response.json();
+  if (response.headers.get("content-type")?.includes("application/json")) {
+    return await response.json();
+  }
+  return true as T;
 }
