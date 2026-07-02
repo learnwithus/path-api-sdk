@@ -7,7 +7,7 @@ import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 import { PathProviderClient } from "./next-client.js";
 
 export type { ServerSDKInstance };
-export type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
+export type { Enrollment, AuthStatus, Progress, SubmitProgressPayload, MilestoneValue } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
 
 

@@ -1,4 +1,5 @@
-import type { Enrollment, AuthStatus, SubmitProgressResponse, MilestoneValue } from "./types.js";
+import type { Enrollment, AuthStatus, Progress, MilestoneValue, SubmitProgressPayload } from "./types.js";
+import { toSubmitBody } from "./submit-payload.js";
 
 export interface ServerSDKConfig {
   /**
@@ -93,12 +94,16 @@ export function createServerSDK(
     },
 
     /**
-     * Submit progress for a milestone.
+     * Submit progress for a milestone. Pass a bare value to mark it complete, or a
+     * `{ data, complete }` payload to control completeness independently of the value.
      */
-    submitProgress: async (milestoneSlug: string, value: MilestoneValue): Promise<SubmitProgressResponse> => {
-      return serverFetch<SubmitProgressResponse>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh, {
+    submitProgress: async (
+      milestoneSlug: string,
+      valueOrPayload: MilestoneValue | SubmitProgressPayload,
+    ): Promise<Progress> => {
+      return serverFetch<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh, {
         method: "POST",
-        body: { milestoneSlug, value },
+        body: toSubmitBody(milestoneSlug, valueOrPayload),
       });
     },
   };

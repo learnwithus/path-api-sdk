@@ -38,7 +38,10 @@ export interface Progress {
   id: number;
   userId: string;
   courseMilestoneId: number;
-  value: MilestoneValue;
+  /** The submitted value, or null when the milestone carries no data. */
+  value: MilestoneValue | null;
+  /** Whether this submission marks the milestone complete. */
+  complete: boolean;
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
@@ -63,11 +66,19 @@ export interface AuthStatus {
 }
 
 /**
- * Response from submitting progress
+ * Payload form for `submitProgress`, to send a value and its completeness together.
+ *
+ * @example
+ * ```ts
+ * // Record the value `false` but mark the milestone complete anyway.
+ * await path.submitProgress("module-1-checkbox", { data: false, complete: true });
+ * ```
  */
-export interface SubmitProgressResponse {
-  success: boolean;
-  progress: Progress;
+export interface SubmitProgressPayload {
+  /** The value to store, or null for a data-less submission. */
+  data: MilestoneValue | null;
+  /** Whether the milestone is complete. When omitted, the submission is treated as complete. */
+  complete?: boolean;
 }
 
 /**

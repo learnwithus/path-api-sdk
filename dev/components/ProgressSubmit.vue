@@ -13,7 +13,16 @@
         v-model="progressValue"
         placeholder="e.g., true, 'Completed', 95, or {score: 95}"
       />
-      <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string.</div>
+      <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string. Optional when a completeness flag is set below.</div>
+    </div>
+    <div class="form-group">
+      <label for="completeChoice">Complete:</label>
+      <select id="completeChoice" v-model="completeChoice">
+        <option value="omit">Omit (any data ⇒ complete)</option>
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+      <div class="hint">Send an explicit completeness flag, or omit it to let the value imply completion.</div>
     </div>
     <div class="form-group">
       <button id="submitProgressBtn" @click="submitProgress" :disabled="loading">
@@ -37,16 +46,17 @@
         <div style="margin-top: 15px">
           <strong>Progress Details:</strong>
           <div style="margin-left: 15px">
-            <div>Progress ID: {{ result.progress.id }}</div>
-            <div>User ID: {{ result.progress.userId }}</div>
+            <div>Progress ID: {{ result.id }}</div>
+            <div>User ID: {{ result.userId }}</div>
             <div>
               Milestone ID:
-              {{ result.progress.courseMilestoneId }}
+              {{ result.courseMilestoneId }}
             </div>
-            <div>Value: {{ result.progress.value }}</div>
+            <div>Value: {{ result.value }}</div>
+            <div>Complete: {{ result.complete }}</div>
             <div>
               Created:
-              {{ new Date(result.progress.createdAt).toLocaleString() }}
+              {{ new Date(result.createdAt).toLocaleString() }}
             </div>
           </div>
         </div>
@@ -88,7 +98,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { PathSDKInstance, SubmitProgressResponse } from "../../src/index";
+import type { PathSDKInstance, Progress, SubmitProgressPayload } from "../../src/index";
 
 const { pathInstance } = defineProps<{
   pathInstance?: PathSDKInstance;
@@ -100,9 +110,10 @@ const emit = defineEmits<{
 
 const milestoneSlug = ref("");
 const progressValue = ref("");
+const completeChoice = ref<"omit" | "true" | "false">("omit");
 const loading = ref(false);
 const validationError = ref<string | null>(null);
-const result = ref<SubmitProgressResponse | null>(null);
+const result = ref<Progress | null>(null);
 const apiError = ref<string | null>(null);
 
 async function submitProgress() {
@@ -121,23 +132,32 @@ async function submitProgress() {
     return;
   }
 
-  if (progressValue.value === "") {
-    validationError.value = "Please enter a value";
+  // A value is only required when no explicit completeness flag is set. With a flag, an empty
+  // value means a data-less submission (data: null).
+  if (progressValue.value === "" && completeChoice.value === "omit") {
+    validationError.value = "Please enter a value (or set a Complete flag for a data-less submission)";
     return;
   }
 
-  // Parse value - try JSON first, fallback to string
-  let parsedValue: any;
-  try {
-    parsedValue = JSON.parse(progressValue.value);
-  } catch {
-    parsedValue = progressValue.value;
+  // Parse value - try JSON first, fallback to string. Empty input becomes null.
+  let parsedValue: any = null;
+  if (progressValue.value !== "") {
+    try {
+      parsedValue = JSON.parse(progressValue.value);
+    } catch {
+      parsedValue = progressValue.value;
+    }
   }
 
   loading.value = true;
 
   try {
-    const response = await pathInstance.submitProgress(milestoneSlug.value, parsedValue);
+    // Use the bare-value form when omitting completeness, otherwise the { data, complete } payload.
+    const arg =
+      completeChoice.value === "omit"
+        ? parsedValue
+        : ({ data: parsedValue, complete: completeChoice.value === "true" } satisfies SubmitProgressPayload);
+    const response = await pathInstance.submitProgress(milestoneSlug.value, arg);
     result.value = response;
     console.log("Progress submitted:", response);
 
