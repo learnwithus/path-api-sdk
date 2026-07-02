@@ -16,7 +16,7 @@ export const path = pathSDK({
 // Use it anywhere in your app
 const authStatus = await path.checkAuth();
 const enrollment = await path.getEnrollmentAndProgress();
-await path.submitProgress(1, true);
+await path.submitProgress("module-1-complete", true);
 ```
 
 ### Benefits
@@ -79,15 +79,25 @@ console.log("Course:", enrollment.course.title);
 console.log("Progress:", enrollment.progress);
 ```
 
-#### `path.submitProgress(milestoneId, value)`
+#### `path.submitProgress(milestoneSlug, value | { data, complete })`
 
-Submit progress for a milestone.
+Submit progress for a milestone, identified by its slug. Pass a bare value to record it and mark the
+milestone complete, or a `{ data, complete }` payload to set completeness independently of the value.
+When `complete` is omitted, any submitted value is treated as complete.
 
 ```typescript
-await path.submitProgress(1, true);
-await path.submitProgress(2, "Completed");
-await path.submitProgress(3, { score: 95 });
+await path.submitProgress("module-1-complete", true);
+await path.submitProgress("quiz-score", 95);
+
+// Record a value but control completeness explicitly.
+await path.submitProgress("module-1-checkbox", { data: false, complete: true });
+await path.submitProgress("reflection", { data: "draft", complete: false });
+
+// A data-less "complete"-type milestone.
+await path.submitProgress("attended-orientation", { data: null, complete: true });
 ```
+
+Returns the created `Progress` record (including its stored `value` and `complete` flag).
 
 ## TypeScript Types
 

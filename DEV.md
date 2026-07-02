@@ -105,9 +105,11 @@ Form for submitting progress to milestones.
 
 **Features:**
 
-- Milestone ID input
+- Milestone slug input
 - Value input (supports JSON or plain text)
 - Automatic JSON parsing
+- Complete selector (omit / true / false) to exercise the `{ data, complete }` payload form; the
+  value is optional when an explicit completeness flag is set
 - Detailed success/error feedback
 - Triggers progress reload after successful submission
 
