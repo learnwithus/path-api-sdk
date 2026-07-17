@@ -1,98 +1,34 @@
-import { parse, serialize } from "cookie";
 import type { APIError } from "./types.js";
-import { TOKEN_STORAGE_KEY } from "./constants.js";
 
-/**
- * Options for making API requests
- */
 export interface FetchOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: Record<string, unknown>;
-}
-let _token: string | null = null;
-
-/**
- * Store the bearer token in memory and a cookie on the course domain (accessible to SSR).
- */
-export function setToken(token: string | null): void {
-  _token = token;
-  if (typeof document !== "undefined") {
-    if (token) {
-      document.cookie = serialize(TOKEN_STORAGE_KEY, token, {
-        path: "/",
-        sameSite: "lax",
-        secure: location.protocol === "https:",
-      });
-    } else {
-      document.cookie = serialize(TOKEN_STORAGE_KEY, "", {
-        path: "/",
-        expires: new Date(0),
-      });
-    }
-  }
+  token?: string | null;
 }
 
-/**
- * Retrieve the bearer token from memory or the cookie.
- */
-export function getToken(): string | null {
-  if (!_token && typeof document !== "undefined") {
-    _token = parse(document.cookie)[TOKEN_STORAGE_KEY] ?? null;
-  }
-  return _token;
-}
+let accessToken: string | null = null;
+export const setAccessToken = (token: string | null) => { accessToken = token; };
+export const getAccessToken = () => accessToken;
 
-/**
- * Parse error response from API
- */
 async function parseError(response: Response): Promise<APIError> {
-  try {
-    const error = await response.json();
-    return {
-      message: error.message || "An error occurred",
-      statusCode: response.status,
-    };
-  } catch {
-    return {
-      message: "An error occurred",
-      statusCode: response.status,
-    };
-  }
+  const body = await response.json().catch(() => ({})) as { message?: string };
+  return { message: body.message ?? "Request failed", statusCode: response.status };
 }
 
-/**
- * Make an authenticated API request using a bearer token
- *
- * @param url - The URL to fetch
- * @param options - Fetch options
- * @returns Parsed JSON response
- * @throws {Error} If the request fails
- */
-export async function apiRequest<T = unknown>(url: string, options: FetchOptions = {}): Promise<T> {
-  const { method = "GET", body } = options;
-  const token = getToken();
-
+export async function apiRequest<T>(url: string, options: FetchOptions = {}): Promise<T> {
+  const token = options.token === undefined ? accessToken : options.token;
   const response = await fetch(url, {
-    method,
-    credentials: "include",
+    method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    ...(body && { body: JSON.stringify(body) }),
+    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
-
-  // If Better Auth issued a refreshed session token, update our stored copy
-  const refreshedToken = response.headers.get("set-auth-token");
-  if (refreshedToken) setToken(refreshedToken);
-
   if (!response.ok) {
     const error = await parseError(response);
-    throw new Error(error.message || "Request failed");
+    throw Object.assign(new Error(error.message), { statusCode: error.statusCode });
   }
-
-  if (response.headers.get("content-type")?.includes("application/json")) {
-    return await response.json();
-  }
-  return true as T;
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
 }

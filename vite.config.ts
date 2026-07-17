@@ -22,7 +22,7 @@ export default defineConfig({
     rollupOptions: {
       // Framework deps are provided by the consuming app — don't bundle them
       // Framework deps + sibling entries that must stay as separate modules
-      external: ["next/headers", "next/server", "next/navigation", "h3", "@nuxt/kit", "react", "./next-client.js"],
+      external: ["node:crypto", "next/headers", "next/server", "next/navigation", "h3", "@nuxt/kit", "react", "./next-client.js"],
     },
   },
 

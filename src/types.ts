@@ -1,131 +1,97 @@
-/**
- * User information
- */
-export interface User {
-  id: string;
-  name?: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
+export type ActivityValue = boolean | number | string | Array<string | number>;
+export type ActivityType = "boolean" | "string" | "array" | "number" | "completion";
+export type CompletionRule =
+  | "learner_attestation"
+  | "submission_exists"
+  | "trusted_application_assertion"
+  | "value_predicate"
+  | "manager_approval";
+
+export interface ActivityProgress {
+  activityId: string;
+  value: ActivityValue | null;
+  complete: boolean;
+  completedAt: string | null;
+  updatedAt: string;
 }
 
-/**
- * Course information
- */
-export interface Course {
-  id: string;
-  title: string;
-}
-
-/**
- * Course milestone definition
- */
-export interface Milestone {
-  id: number;
-  courseId: string;
+export interface Activity {
+  activityId: string;
   title: string;
   slug: string;
-  type: MilestoneType;
+  type: ActivityType;
   order: number;
-  createdAt: string;
-  updatedAt: string;
+  required: boolean;
+  completionRule: CompletionRule;
+  progress: ActivityProgress | null;
 }
 
-/**
- * Progress record for a milestone
- */
-export interface Progress {
-  id: number;
-  userId: string;
-  courseMilestoneId: number;
-  /** The submitted value, or null when the milestone carries no data. */
-  value: MilestoneValue | null;
-  /** Whether this submission marks the milestone complete. */
-  complete: boolean;
-  updatedBy: string | null;
-  milestoneSlug: string;
-  updatedByName: string | null;
-  createdAt: string;
-  updatedAt: string;
+export interface SectionProgress {
+  sectionId: string;
+  available: boolean;
+  startedAt: string | null;
+  completedAt: string | null;
 }
 
-/**
- * Enrollment information with user, course, milestones, and progress
- */
-export interface Enrollment {
-  user: User;
-  course: Course;
-  milestones: Milestone[];
-  progress: Progress[];
+export interface Section {
+  sectionId: string;
+  title: string;
+  slug: string;
+  order: number;
+  progress: SectionProgress | null;
+  activities: Activity[];
 }
 
-/**
- * Authentication status
- */
+export interface Registration {
+  id: string;
+  courseId: string;
+  courseVersionId: string;
+  attemptNumber: number;
+  status: "not_started" | "in_progress" | "complete" | "cancelled";
+  derivedComplete: boolean;
+  overrideComplete: boolean;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface RegistrationView {
+  registration: Registration;
+  sections: Section[];
+}
+
+export interface ProgressEvent {
+  id: string;
+  registrationId: string;
+  activityId: string | null;
+  kind: string;
+  value: ActivityValue | null;
+  assertedComplete: boolean | null;
+  sourceType: "learner_api" | "manager" | "migration" | "system" | "xapi";
+  reason: string | null;
+  occurredAt: string;
+  storedAt: string;
+}
+
 export interface AuthStatus {
   isAuthenticated: boolean;
-  enrollment?: Enrollment;
+  registration?: RegistrationView;
 }
 
-/**
- * Payload form for `submitProgress`, to send a value and its completeness together.
- *
- * @example
- * ```ts
- * // Record the value `false` but mark the milestone complete anyway.
- * await path.submitProgress("module-1-checkbox", { data: false, complete: true });
- * await path.submitProgress("attended-orientation", { complete: false });
- * ```
- */
-export type SubmitProgressPayload =
-  | {
-      /** The value to store for a data-bearing milestone. */
-      data: MilestoneValue;
-      /** Whether the milestone is complete. When omitted, the submission is treated as complete. */
-      complete?: boolean;
-    }
-  | {
-      /** Completion milestones carry no data. */
-      data?: never;
-      /** Whether the completion milestone is complete. When omitted, it is treated as complete. */
-      complete?: boolean;
-    };
-
-/**
- * Milestone value types
- */
-export type MilestoneValue = boolean | number | string | Array<string | number>;
-
-/** Milestone data shapes supported by the Path API. */
-export type MilestoneType = "boolean" | "string" | "array" | "number" | "completion";
-
-/** Accepted second argument to `submitProgress`. Omit it for a completed completion milestone. */
-export type SubmitProgressInput = MilestoneValue | SubmitProgressPayload;
-
-/**
- * Configuration options for Path SDK
- */
 export interface LearnerAPIConfig {
-  /**
-   * Course ID for the learner.
-   * Can be omitted if PATH_COURSE_ID or NEXT_PUBLIC_PATH_COURSE_ID is set in the environment.
-   */
   courseId?: string;
-
-  /**
-   * Path backend URL (default: https://path.vchlearn.ca)
-   */
   pathUrl?: string;
-
-  /**
-   * Your course website URL for login redirects
-   */
   courseUrl: string;
 }
 
-/**
- * Error response from API
- */
+export interface TokenResponse {
+  tokenType: "Bearer";
+  accessToken: string;
+  expiresIn: number;
+  scope: string;
+  refreshToken?: string;
+  refreshExpiresIn?: number;
+}
+
 export interface APIError {
   message: string;
   statusCode?: number;
