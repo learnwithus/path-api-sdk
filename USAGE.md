@@ -79,7 +79,7 @@ console.log("Course:", enrollment.course.title);
 console.log("Progress:", enrollment.progress);
 ```
 
-#### `path.submitProgress(milestoneSlug, value | { data, complete })`
+#### `path.submitProgress(milestoneSlug, value | { data, complete } | { complete })`
 
 Submit progress for a milestone, identified by its slug. Pass a bare value to record it and mark the
 milestone complete, or a `{ data, complete }` payload to set completeness independently of the value.
@@ -93,9 +93,13 @@ await path.submitProgress("quiz-score", 95);
 await path.submitProgress("module-1-checkbox", { data: false, complete: true });
 await path.submitProgress("reflection", { data: "draft", complete: false });
 
-// A data-less "complete"-type milestone.
-await path.submitProgress("attended-orientation", { data: null, complete: true });
+// A data-less "completion" milestone carries no value.
+await path.submitProgress("attended-orientation");
+await path.submitProgress("attended-orientation", { complete: false });
 ```
+
+Data-bearing milestones require type-valid data even when marked incomplete. Only a milestone whose
+type is `completion` accepts an omitted value; its returned `Progress.value` is `null`.
 
 Returns the created `Progress` record (including its stored `value` and `complete` flag).
 
@@ -111,7 +115,9 @@ import type {
   User,
   Course,
   AuthStatus,
-  SubmitProgressResponse,
+  SubmitProgressInput,
+  SubmitProgressPayload,
+  MilestoneType,
   MilestoneValue,
 } from "@vch-lt/path";
 ```
