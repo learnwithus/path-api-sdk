@@ -25,7 +25,7 @@ export interface Milestone {
   courseId: string;
   title: string;
   slug: string;
-  type: string;
+  type: MilestoneType;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -42,7 +42,9 @@ export interface Progress {
   value: MilestoneValue | null;
   /** Whether this submission marks the milestone complete. */
   complete: boolean;
-  updatedBy: string;
+  updatedBy: string | null;
+  milestoneSlug: string;
+  updatedByName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,19 +74,33 @@ export interface AuthStatus {
  * ```ts
  * // Record the value `false` but mark the milestone complete anyway.
  * await path.submitProgress("module-1-checkbox", { data: false, complete: true });
+ * await path.submitProgress("attended-orientation", { complete: false });
  * ```
  */
-export interface SubmitProgressPayload {
-  /** The value to store, or null for a data-less submission. */
-  data: MilestoneValue | null;
-  /** Whether the milestone is complete. When omitted, the submission is treated as complete. */
-  complete?: boolean;
-}
+export type SubmitProgressPayload =
+  | {
+      /** The value to store for a data-bearing milestone. */
+      data: MilestoneValue;
+      /** Whether the milestone is complete. When omitted, the submission is treated as complete. */
+      complete?: boolean;
+    }
+  | {
+      /** Completion milestones carry no data. */
+      data?: never;
+      /** Whether the completion milestone is complete. When omitted, it is treated as complete. */
+      complete?: boolean;
+    };
 
 /**
  * Milestone value types
  */
 export type MilestoneValue = boolean | number | string | Array<string | number>;
+
+/** Milestone data shapes supported by the Path API. */
+export type MilestoneType = "boolean" | "string" | "array" | "number" | "completion";
+
+/** Accepted second argument to `submitProgress`. Omit it for a completed completion milestone. */
+export type SubmitProgressInput = MilestoneValue | SubmitProgressPayload;
 
 /**
  * Configuration options for Path SDK

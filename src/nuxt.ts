@@ -5,7 +5,16 @@ import { createServerSDK } from "./server-core.js";
 import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
-export type { Enrollment, AuthStatus, Progress, SubmitProgressPayload, MilestoneValue } from "./types.js";
+export type {
+  Enrollment,
+  AuthStatus,
+  Progress,
+  Milestone,
+  MilestoneType,
+  MilestoneValue,
+  SubmitProgressInput,
+  SubmitProgressPayload,
+} from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
 

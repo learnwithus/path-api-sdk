@@ -1,4 +1,4 @@
-import type { MilestoneValue, SubmitProgressPayload } from "./types.js";
+import type { MilestoneValue, SubmitProgressInput, SubmitProgressPayload } from "./types.js";
 
 /**
  * Normalize the second argument of `submitProgress` into a request body.
@@ -6,22 +6,26 @@ import type { MilestoneValue, SubmitProgressPayload } from "./types.js";
  * Accepts either a bare {@link MilestoneValue} (which implies the milestone is complete) or a
  * {@link SubmitProgressPayload} `{ data, complete }` object.
  *
- * A `MilestoneValue` is never a plain (non-array) object, so the payload form can be detected
- * safely by the presence of a `data` key on a non-array object. If object-valued milestones are
- * ever introduced, this discriminator must be revisited.
+ * A `MilestoneValue` is never a plain (non-array) object, so any plain object is a payload. If
+ * object-valued milestones are ever introduced, this discriminator must be revisited.
  */
 export function toSubmitBody(
   milestoneSlug: string,
-  valueOrPayload: MilestoneValue | SubmitProgressPayload,
-): { milestoneSlug: string; value: MilestoneValue | null; complete?: boolean } {
+  valueOrPayload?: SubmitProgressInput,
+): { milestoneSlug: string; value?: MilestoneValue; complete?: boolean } {
+  if (valueOrPayload === undefined) return { milestoneSlug };
+
   if (
     typeof valueOrPayload === "object" &&
     valueOrPayload !== null &&
-    !Array.isArray(valueOrPayload) &&
-    "data" in valueOrPayload
+    !Array.isArray(valueOrPayload)
   ) {
-    const { data, complete } = valueOrPayload;
-    return { milestoneSlug, value: data, ...(complete !== undefined && { complete }) };
+    const { data, complete } = valueOrPayload as SubmitProgressPayload;
+    return {
+      milestoneSlug,
+      ...(data !== undefined && { value: data }),
+      ...(complete !== undefined && { complete }),
+    };
   }
   return { milestoneSlug, value: valueOrPayload };
 }

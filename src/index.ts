@@ -1,4 +1,4 @@
-import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressPayload, MilestoneValue, Progress } from "./types.js";
+import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressInput, Progress } from "./types.js";
 import { apiRequest, setToken, getToken } from "./fetch-helper.js";
 import { toSubmitBody } from "./submit-payload.js";
 
@@ -117,18 +117,20 @@ export function pathSDK(config: LearnerAPIConfig) {
      * Submit progress for a milestone.
      *
      * Pass a bare value to record it and mark the milestone complete, or a `{ data, complete }`
-     * payload to control completeness independently of the value.
+     * payload to control completeness independently of the value. Omit the second argument for a
+     * completed data-less `completion` milestone.
      *
      * @example
      * ```ts
      * await path.submitProgress("module-1-complete", true);                    // value true, complete
      * await path.submitProgress("module-1-checkbox", { data: false, complete: true }); // value false, complete
      * await path.submitProgress("reflection", { data: "draft", complete: false });     // saved but incomplete
+     * await path.submitProgress("attended-orientation");                                // completion milestone
      * ```
      */
     submitProgress: async (
       milestoneSlug: string,
-      valueOrPayload: MilestoneValue | SubmitProgressPayload,
+      valueOrPayload?: SubmitProgressInput,
     ): Promise<Progress> => {
       return await apiRequest<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, {
         method: "POST",

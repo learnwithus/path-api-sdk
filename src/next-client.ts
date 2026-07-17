@@ -16,16 +16,17 @@ import type {
   AuthStatus,
   Enrollment,
   LearnerAPIConfig,
-  MilestoneValue,
   Progress,
-  SubmitProgressPayload,
+  SubmitProgressInput,
 } from "./types.js";
 
 export type {
   AuthStatus,
   Enrollment,
   LearnerAPIConfig,
+  MilestoneType,
   MilestoneValue,
+  SubmitProgressInput,
   SubmitProgressPayload,
 } from "./types.js";
 export type { Progress, User, Course, Milestone } from "./types.js";
@@ -44,7 +45,7 @@ interface PathContextValue {
   getProgress: (milestoneSlug: string) => Progress | undefined;
   submitProgress: (
     milestoneSlug: string,
-    valueOrPayload: MilestoneValue | SubmitProgressPayload,
+    valueOrPayload?: SubmitProgressInput,
   ) => Promise<Progress>;
   login: (callbackUrl?: string) => void;
   logout: () => Promise<void>;
@@ -96,7 +97,7 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
   }, []);
 
   const submitProgress = useCallback(
-    async (milestoneSlug: string, valueOrPayload: MilestoneValue | SubmitProgressPayload) => {
+    async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) => {
       const progress = await sdk.submitProgress(milestoneSlug, valueOrPayload);
       setAuth((prev) => {
         if (!prev.enrollment) return prev;
