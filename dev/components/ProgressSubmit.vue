@@ -6,14 +6,22 @@
       <input type="text" id="milestoneSlug" v-model="milestoneSlug" placeholder="e.g., module-1-complete" />
     </div>
     <div class="form-group">
+      <label>
+        <input v-model="isCompletionMilestone" type="checkbox" />
+        Data-less completion milestone
+      </label>
+      <div class="hint">Completion milestones submit only the completeness flag and never a value.</div>
+    </div>
+    <div class="form-group">
       <label for="progressValue">Value:</label>
       <input
         type="text"
         id="progressValue"
         v-model="progressValue"
-        placeholder="e.g., true, 'Completed', 95, or {score: 95}"
+        :disabled="isCompletionMilestone"
+        placeholder="e.g., true, Completed, 95, or [1, 2]"
       />
-      <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string. Optional when a completeness flag is set below.</div>
+      <div class="hint">Required for data-bearing milestones. JSON is parsed; other input is treated as text.</div>
     </div>
     <div class="form-group">
       <label for="completeChoice">Complete:</label>
@@ -110,6 +118,7 @@ const emit = defineEmits<{
 
 const milestoneSlug = ref("");
 const progressValue = ref("");
+const isCompletionMilestone = ref(false);
 const completeChoice = ref<"omit" | "true" | "false">("omit");
 const loading = ref(false);
 const validationError = ref<string | null>(null);
@@ -132,32 +141,30 @@ async function submitProgress() {
     return;
   }
 
-  // A value is only required when no explicit completeness flag is set. With a flag, an empty
-  // value means a data-less submission (data: null).
-  if (progressValue.value === "" && completeChoice.value === "omit") {
-    validationError.value = "Please enter a value (or set a Complete flag for a data-less submission)";
-    return;
-  }
-
-  // Parse value - try JSON first, fallback to string. Empty input becomes null.
-  let parsedValue: any = null;
-  if (progressValue.value !== "") {
-    try {
-      parsedValue = JSON.parse(progressValue.value);
-    } catch {
-      parsedValue = progressValue.value;
-    }
+  // Parse data-bearing values as JSON first, falling back to text. A blank input is a valid empty
+  // string; completion milestones omit the value entirely.
+  let parsedValue: any = progressValue.value;
+  try {
+    parsedValue = JSON.parse(progressValue.value);
+  } catch {
+    // Keep the text value.
   }
 
   loading.value = true;
 
   try {
-    // Use the bare-value form when omitting completeness, otherwise the { data, complete } payload.
-    const arg =
-      completeChoice.value === "omit"
-        ? parsedValue
-        : ({ data: parsedValue, complete: completeChoice.value === "true" } satisfies SubmitProgressPayload);
-    const response = await pathInstance.submitProgress(milestoneSlug.value, arg);
+    const explicitComplete = completeChoice.value === "omit" ? undefined : completeChoice.value === "true";
+    const response = isCompletionMilestone.value
+      ? await pathInstance.submitProgress(
+          milestoneSlug.value,
+          explicitComplete === undefined ? undefined : { complete: explicitComplete },
+        )
+      : await pathInstance.submitProgress(
+          milestoneSlug.value,
+          explicitComplete === undefined
+            ? parsedValue
+            : ({ data: parsedValue, complete: explicitComplete } satisfies SubmitProgressPayload),
+        );
     result.value = response;
     console.log("Progress submitted:", response);
 
