@@ -1,210 +1,77 @@
+import { createHash, randomBytes } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { createElement } from "react";
 import type { ReactNode } from "react";
-import { TOKEN_STORAGE_KEY } from "./constants.js";
-import { createServerSDK } from "./server-core.js";
-import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
+import { ACCESS_TOKEN_COOKIE, OAUTH_STATE_COOKIE, PKCE_VERIFIER_COOKIE, REFRESH_TOKEN_COOKIE } from "./constants.js";
+import { createServerSDK, exchangeCode } from "./server-core.js";
+import type { ServerSDKConfig, ServerTokenSet } from "./server-core.js";
 import { PathProviderClient } from "./next-client.js";
 
-export type { ServerSDKInstance };
-export type {
-  Enrollment,
-  AuthStatus,
-  Progress,
-  Milestone,
-  MilestoneType,
-  MilestoneValue,
-  SubmitProgressInput,
-  SubmitProgressPayload,
-} from "./types.js";
-export type { ServerSDKConfig } from "./server-core.js";
+export * from "./types.js";
+export type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
+const secure = process.env.NODE_ENV === "production";
+const cookieOptions = { httpOnly: true, sameSite: "lax" as const, secure, path: "/" };
+const base64url = (value: Buffer) => value.toString("base64url");
 
-/**
- * Next.js middleware that intercepts the ?path-token= query param on redirect from Path login.
- *
- * On the first page load after login the bearer token arrives as ?path-token= in the URL.
- * Without this middleware, the cookie isn't set until client-side JS runs, so the first
- * SSR render would see an unauthenticated request.
- *
- * This middleware handles it in a single request with no redirect:
- * 1. Reads ?path-token= from the URL
- * 2. Sets the bearer token cookie on the response (available for all future requests)
- * 3. Forwards the token to SSR via an internal x-path-token request header
- * 4. Rewrites the URL to remove ?path-token= from the browser address bar
- *
- * @example
- * ```ts
- * // middleware.ts
- * import { createPathMiddleware } from '@vch-lt/path/next';
- * import type { NextRequest } from 'next/server';
- *
- * const handlePath = createPathMiddleware();
- *
- * export function middleware(request: NextRequest) {
- *   return handlePath(request);
- * }
- * ```
- *
- * If you have your own middleware, call it and merge the responses:
- * ```ts
- * export function middleware(request: NextRequest) {
- *   const pathResponse = handlePath(request);
- *   if (pathResponse) return pathResponse;
- *   // ... your own logic
- * }
- * ```
- */
-export function createPathMiddleware() {
+export function createPathMiddleware(options: { pathUrl?: string } = {}) {
   return async function pathMiddleware(request: NextRequest) {
-    const token = request.nextUrl.searchParams.get("path-token");
-    if (!token) return;
-
-    // Redirect to the same URL without ?path-token= so the token doesn't stay in the browser address bar.
-    // The cookie is set on the redirect response, so it will be available on the next request.
-    const url = request.nextUrl.clone();
-    url.searchParams.delete("path-token");
-
-    const response = NextResponse.redirect(url);
-
-    response.cookies.set(TOKEN_STORAGE_KEY, token, {
-      path: "/",
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
-
+    const code = request.nextUrl.searchParams.get("code");
+    const state = request.nextUrl.searchParams.get("state");
+    const verifier = request.cookies.get(PKCE_VERIFIER_COOKIE)?.value;
+    const expectedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
+    if (!code || !state || !verifier || state !== expectedState) return;
+    const cleanUrl = request.nextUrl.clone();
+    cleanUrl.searchParams.delete("code");
+    cleanUrl.searchParams.delete("state");
+    const tokens = await exchangeCode(options.pathUrl ?? process.env.PATH_URL ?? "https://path.vchlearn.ca", code, verifier, cleanUrl.toString());
+    const response = NextResponse.redirect(cleanUrl);
+    response.cookies.set(ACCESS_TOKEN_COOKIE, tokens.accessToken, { ...cookieOptions, maxAge: tokens.expiresIn });
+    if (tokens.refreshToken) response.cookies.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken, { ...cookieOptions, maxAge: tokens.refreshExpiresIn });
+    response.cookies.delete(PKCE_VERIFIER_COOKIE);
+    response.cookies.delete(OAUTH_STATE_COOKIE);
     return response;
   };
 }
 
-/**
- * Create a Path SDK instance for use in Next.js Server Components and server-side code.
- * Automatically reads the bearer token from the cookie store or the x-path-token header
- * (set by createPathMiddleware on the first request after login).
- *
- * Must be called in an async Server Component, Route Handler, or Server Action.
- *
- * @example
- * ```tsx
- * // app/page.tsx (Server Component)
- * import { pathServerSDK } from '@vch-lt/path/next';
- *
- * export default async function CoursePage() {
- *   const path = await pathServerSDK({ courseId: 'your-course-id' });
- *   const auth = await path.checkAuth();
- *
- *   if (!auth.isAuthenticated) {
- *     redirect('/login');
- *   }
- *
- *   return <div>Welcome, {auth.enrollment?.user.email}</div>;
- * }
- * ```
- */
 export async function pathServerSDK(config: ServerSDKConfig) {
   const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
-
-  const token = cookieStore.get(TOKEN_STORAGE_KEY)?.value ?? null;
-
-  const sdk = createServerSDK(config, token, (newToken) => {
-    // cookies() returns ReadonlyRequestCookies in types but supports .set() in Route Handlers/Server Actions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (cookieStore as any).set(TOKEN_STORAGE_KEY, newToken, {
-      path: "/",
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
+  const tokens: ServerTokenSet = {
+    accessToken: cookieStore.get(ACCESS_TOKEN_COOKIE)?.value ?? null,
+    refreshToken: cookieStore.get(REFRESH_TOKEN_COOKIE)?.value ?? null,
+  };
+  const sdk = createServerSDK(config, tokens, (next) => {
+    if (next.accessToken) cookieStore.set(ACCESS_TOKEN_COOKIE, next.accessToken, { ...cookieOptions, maxAge: 15 * 60 });
+    else cookieStore.delete(ACCESS_TOKEN_COOKIE);
+    if (next.refreshToken) cookieStore.set(REFRESH_TOKEN_COOKIE, next.refreshToken, { ...cookieOptions, maxAge: 5 * 24 * 60 * 60 });
+    else cookieStore.delete(REFRESH_TOKEN_COOKIE);
   });
-
   return {
     ...sdk,
-    /**
-     * Redirect to the Path login page. Call this in a Server Component, Route Handler,
-     * or Server Action — it uses Next.js `redirect()` internally.
-     *
-     * @param callbackUrl - URL to return to after login. Defaults to `courseUrl` from config.
-     *
-     * @example
-     * ```ts
-     * const path = await pathServerSDK({ courseId: 'your-course-id', courseUrl: 'https://your-site.com' });
-     * const auth = await path.checkAuth();
-     * if (!auth.isAuthenticated) await path.login();
-     * ```
-     */
-    login: async (callbackUrl?: string): Promise<never> => {
+    login: async (callbackUrl = sdk.courseUrl): Promise<never> => {
+      if (!callbackUrl) throw new Error("[@vch-lt/path] courseUrl or callbackUrl is required for login");
+      const verifier = base64url(randomBytes(32));
+      const challenge = createHash("sha256").update(verifier).digest("base64url");
+      const state = base64url(randomBytes(24));
+      cookieStore.set(PKCE_VERIFIER_COOKIE, verifier, { ...cookieOptions, maxAge: 10 * 60 });
+      cookieStore.set(OAUTH_STATE_COOKIE, state, { ...cookieOptions, maxAge: 10 * 60 });
+      const url = new URL(`${sdk.pathUrl}/learner/login`);
+      url.searchParams.set("courseId", sdk.courseId);
+      url.searchParams.set("callbackUrl", callbackUrl);
+      url.searchParams.set("codeChallenge", challenge);
+      url.searchParams.set("state", state);
       const { redirect } = await import("next/navigation");
-      return redirect(sdk.getLoginUrl(callbackUrl));
+      return redirect(url.toString());
     },
   };
 }
 
-/**
- * Pre-built Next.js middleware instance. Re-export from your middleware.ts:
- *
- * ```ts
- * // middleware.ts
- * export { pathMiddleware as default, pathMiddlewareConfig as config } from '@vch-lt/path/next';
- * ```
- */
 export const pathMiddleware = createPathMiddleware();
+export const pathMiddlewareConfig = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };
 
-/**
- * Default middleware matcher config — excludes Next.js internals and static files.
- * Re-export as `config` from your middleware.ts alongside `pathMiddleware`.
- */
-export const pathMiddlewareConfig = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-};
-
-// ---------------------------------------------------------------------------
-// PathProvider — async Server Component
-// ---------------------------------------------------------------------------
-
-export interface PathProviderProps {
-  children: ReactNode;
-  /** Path backend URL (default: https://path.vchlearn.ca) */
-  pathUrl?: string;
-  /** Course ID. Falls back to NEXT_PUBLIC_PATH_COURSE_ID env var. */
-  courseId?: string;
-  /** Course URL. Falls back to NEXT_PUBLIC_PATH_COURSE_URL env var. */
-  courseUrl?: string;
-  /**
-   * Fetch auth on the server and hydrate the client (default: true).
-   * Set to false to skip — the client will fetch on mount instead.
-   */
-  initialAuth?: boolean;
-}
-
-/**
- * Async Server Component that fetches auth and provides reactive state to the tree.
- * Place this in your root layout — all nested Client Components can use `usePath()`.
- *
- * @example
- * ```tsx
- * // app/layout.tsx
- * import { PathProvider } from '@vch-lt/path/next';
- *
- * export const dynamic = 'force-dynamic';
- *
- * export default async function RootLayout({ children }) {
- *   return (
- *     <html><body>
- *       <PathProvider>{children}</PathProvider>
- *     </body></html>
- *   );
- * }
- * ```
- */
-export async function PathProvider({
-  children,
-  initialAuth: enableInitialAuth = true,
-  ...config
-}: PathProviderProps) {
-  let auth;
-  if (enableInitialAuth) {
-    const sdk = await pathServerSDK(config);
-    auth = await sdk.checkAuth();
-  }
+export interface PathProviderProps extends ServerSDKConfig { children: ReactNode; initialAuth?: boolean; }
+export async function PathProvider({ children, initialAuth = true, ...config }: PathProviderProps) {
+  const auth = initialAuth ? await (await pathServerSDK(config)).checkAuth() : undefined;
   return createElement(PathProviderClient, { initialAuth: auth, config }, children);
 }

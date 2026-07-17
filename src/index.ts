@@ -1,151 +1,85 @@
-import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressInput, Progress } from "./types.js";
-import { apiRequest, setToken, getToken } from "./fetch-helper.js";
-import { toSubmitBody } from "./submit-payload.js";
+import type { Activity, AuthStatus, LearnerAPIConfig, ProgressEvent, RegistrationView, TokenResponse, ActivityValue } from "./types.js";
+import { apiRequest, getAccessToken, setAccessToken } from "./fetch-helper.js";
 
 export * from "./types.js";
-export { apiRequest, setToken, getToken } from "./fetch-helper.js";
-export { TOKEN_STORAGE_KEY } from "./constants.js";
+export { apiRequest, getAccessToken, setAccessToken } from "./fetch-helper.js";
 
-/**
- * Look up a progress record by milestone slug.
- * Cross-references the milestones array (slug → id) with the progress array (courseMilestoneId).
- *
- * @example
- * ```ts
- * const enrollment = await path.getEnrollmentAndProgress();
- * const module1 = getProgress(enrollment, "module-1-completion");
- * console.log(module1?.value); // "true"
- * ```
- */
-export function getProgress(enrollment: Enrollment, milestoneSlug: string): Progress | undefined {
-  const milestone = enrollment.milestones.find((m) => m.slug === milestoneSlug);
-  if (!milestone) return undefined;
-  return enrollment.progress.find((p) => p.courseMilestoneId === milestone.id);
+const VERIFIER_KEY = "path_pkce_verifier";
+const STATE_KEY = "path_oauth_state";
+const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+async function createPkce() {
+  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return { verifier, challenge: base64url(new Uint8Array(digest)) };
 }
 
-/**
- * Factory function to create a Path SDK instance
- *
- * @example
- * ```typescript
- * export const path = pathSDK({ courseId: "your-course-id-here", courseUrl: "https://your-course-website.com" });
- *
- * // Use the SDK
- * const auth = await path.checkAuth();
- * await path.submitProgress('module-1-complete', true);
- * ```
- */
+export function getActivity(view: RegistrationView, slug: string): Activity | undefined {
+  return view.sections.flatMap((section) => section.activities).find((activity) => activity.slug === slug);
+}
+
 export function pathSDK(config: LearnerAPIConfig) {
-  // Read ?path-token= from the URL on first SDK instantiation (login redirect)
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get("path-token");
-    if (urlToken) {
-      setToken(urlToken);
-      params.delete("path-token");
-      const search = params.toString() ? `?${params.toString()}` : "";
-      window.history.replaceState(null, "", window.location.pathname + search + window.location.hash);
-    }
-  }
-
-  // import.meta.env is Vite's way of exposing VITE_-prefixed env vars to the browser.
-  // process.env.NEXT_PUBLIC_* must be referenced as a literal expression so Next.js webpack can inline them.
   const meta = typeof import.meta !== "undefined" ? ((import.meta as { env?: Record<string, string> }).env ?? {}) : {};
-  const pathUrl =
-    config.pathUrl ??
-    meta.VITE_PATH_URL ??
-    (typeof process !== "undefined" ? process.env.PATH_URL : undefined) ??
-    "https://path.vchlearn.ca";
-  const courseUrl =
-    config.courseUrl ||
-    meta.VITE_PATH_COURSE_URL ||
-    (typeof process !== "undefined" ? process.env.NEXT_PUBLIC_PATH_COURSE_URL : undefined) ||
-    (typeof process !== "undefined" ? process.env.COURSE_URL : undefined) ||
-    "";
-  const courseId =
-    config.courseId ||
-    meta.VITE_PATH_COURSE_ID ||
-    (typeof process !== "undefined" ? process.env.NEXT_PUBLIC_PATH_COURSE_ID : undefined) ||
-    (typeof process !== "undefined" ? process.env.PATH_COURSE_ID : undefined) ||
-    "";
-  if (!courseId) {
-    throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
+  const pathUrl = config.pathUrl ?? meta.VITE_PATH_URL ?? "https://path.vchlearn.ca";
+  const courseId = config.courseId ?? meta.VITE_PATH_COURSE_ID ?? "";
+  if (!courseId) throw new Error("[@vch-lt/path] courseId is required");
+
+  async function handleCallback(): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if (!code || !state) return false;
+    const verifier = sessionStorage.getItem(VERIFIER_KEY);
+    const expectedState = sessionStorage.getItem(STATE_KEY);
+    if (!verifier || state !== expectedState) throw new Error("Path authorization state did not match");
+    const redirectUri = new URL(url);
+    redirectUri.searchParams.delete("code");
+    redirectUri.searchParams.delete("state");
+    const tokens = await apiRequest<TokenResponse>(`${pathUrl}/api/learner/auth/token`, {
+      method: "POST",
+      body: { grantType: "authorization_code", code, codeVerifier: verifier, redirectUri: redirectUri.toString(), clientType: "browser" },
+    });
+    setAccessToken(tokens.accessToken);
+    sessionStorage.removeItem(VERIFIER_KEY);
+    sessionStorage.removeItem(STATE_KEY);
+    window.history.replaceState(null, "", redirectUri.pathname + redirectUri.search + redirectUri.hash);
+    return true;
   }
 
+  const getRegistration = () => apiRequest<RegistrationView>(`${pathUrl}/api/learner/registration`);
   return {
-    /**
-     * Check authentication status
-     */
+    handleCallback,
     checkAuth: async (): Promise<AuthStatus> => {
       try {
-        const enrollment = await apiRequest<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`);
-        return {
-          isAuthenticated: true,
-          enrollment,
-        };
-      } catch (error) {
-        return {
-          isAuthenticated: false,
-        };
-      }
+        if (!getAccessToken()) await handleCallback();
+        if (!getAccessToken()) return { isAuthenticated: false };
+        return { isAuthenticated: true, registration: await getRegistration() };
+      } catch { return { isAuthenticated: false }; }
     },
-
-    /**
-     * Redirect to login page
-     */
-    login: (callbackUrl?: string): void => {
-      const callback = encodeURIComponent(callbackUrl || courseUrl);
-      window.location.href = `${pathUrl}/learner/login?courseId=${courseId}&callbackUrl=${callback}`;
+    login: async (callbackUrl = config.courseUrl): Promise<void> => {
+      const { verifier, challenge } = await createPkce();
+      const state = base64url(crypto.getRandomValues(new Uint8Array(24)));
+      sessionStorage.setItem(VERIFIER_KEY, verifier);
+      sessionStorage.setItem(STATE_KEY, state);
+      const login = new URL(`${pathUrl}/learner/login`);
+      login.searchParams.set("courseId", courseId);
+      login.searchParams.set("callbackUrl", callbackUrl);
+      login.searchParams.set("codeChallenge", challenge);
+      login.searchParams.set("state", state);
+      window.location.assign(login);
     },
-
-    /**
-     * Logout the current user and clear the stored token
-     */
-    logout: async (): Promise<void> => {
-      await apiRequest(`${pathUrl}/api/learner/logout?courseId=${courseId}`, { method: "POST" });
-      setToken(null);
+    logout: async () => {
+      const token = getAccessToken();
+      if (token) await apiRequest(`${pathUrl}/api/learner/auth/revoke`, { method: "POST", body: { token }, token: null }).catch(() => undefined);
+      setAccessToken(null);
     },
-
-    /**
-     * Get enrollment and progress data
-     */
-    getEnrollmentAndProgress: async (): Promise<Enrollment> => {
-      return await apiRequest<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`);
-    },
-
-    /**
-     * Submit progress for a milestone.
-     *
-     * Pass a bare value to record it and mark the milestone complete, or a `{ data, complete }`
-     * payload to control completeness independently of the value. Omit the second argument for a
-     * completed data-less `completion` milestone.
-     *
-     * @example
-     * ```ts
-     * await path.submitProgress("module-1-complete", true);                    // value true, complete
-     * await path.submitProgress("module-1-checkbox", { data: false, complete: true }); // value false, complete
-     * await path.submitProgress("reflection", { data: "draft", complete: false });     // saved but incomplete
-     * await path.submitProgress("attended-orientation");                                // completion milestone
-     * ```
-     */
-    submitProgress: async (
-      milestoneSlug: string,
-      valueOrPayload?: SubmitProgressInput,
-    ): Promise<Progress> => {
-      return await apiRequest<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, {
-        method: "POST",
-        body: toSubmitBody(milestoneSlug, valueOrPayload),
-      });
-    },
+    getRegistration,
+    submit: (activitySlug: string, value: ActivityValue) => apiRequest<ProgressEvent>(`${pathUrl}/api/learner/activities/${encodeURIComponent(activitySlug)}/submissions`, { method: "POST", body: { value } }),
+    attest: (activitySlug: string) => apiRequest<ProgressEvent>(`${pathUrl}/api/learner/activities/${encodeURIComponent(activitySlug)}/attestation`, { method: "POST", body: { complete: true } }),
+    assertComplete: (activitySlug: string) => apiRequest<ProgressEvent>(`${pathUrl}/api/learner/activities/${encodeURIComponent(activitySlug)}/completion`, { method: "POST", body: { complete: true } }),
   };
 }
 
-/**
- * Type for the return value of pathSDK
- */
 export type PathSDKInstance = ReturnType<typeof pathSDK>;
-
-/**
- * Default export for convenience
- */
 export default pathSDK;

@@ -1,111 +1,56 @@
-import type { Enrollment, AuthStatus, Progress, SubmitProgressInput } from "./types.js";
-import { toSubmitBody } from "./submit-payload.js";
+import type { ActivityValue, AuthStatus, ProgressEvent, RegistrationView, TokenResponse } from "./types.js";
+import { apiRequest } from "./fetch-helper.js";
 
-export interface ServerSDKConfig {
-  /**
-   * Course ID for the learner.
-   * Can be omitted if PATH_COURSE_ID is set in the environment.
-   */
-  courseId?: string;
-  pathUrl?: string;
-  /**
-   * Your course website URL, used as the default callback after login.
-   */
-  courseUrl?: string;
-}
+export interface ServerSDKConfig { courseId?: string; pathUrl?: string; courseUrl?: string; }
+export interface ServerTokenSet { accessToken: string | null; refreshToken: string | null; }
 
-async function serverFetch<T>(
-  url: string,
-  token: string | null,
-  onTokenRefresh: ((token: string) => void | Promise<void>) | undefined,
-  options: { method?: string; body?: Record<string, unknown> } = {},
-): Promise<T> {
-  const { method = "GET", body } = options;
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    ...(body && { body: JSON.stringify(body) }),
+export async function exchangeCode(pathUrl: string, code: string, verifier: string, redirectUri: string) {
+  return apiRequest<TokenResponse>(`${pathUrl}/api/learner/auth/token`, {
+    method: "POST",
+    body: { grantType: "authorization_code", code, codeVerifier: verifier, redirectUri, clientType: "bff" },
+    token: null,
   });
-
-  const refreshedToken = response.headers.get("set-auth-token");
-  if (refreshedToken && onTokenRefresh) await onTokenRefresh(refreshedToken);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(error.message || "Request failed");
-  }
-
-  return response.json();
 }
 
 export function createServerSDK(
   config: ServerSDKConfig,
-  token: string | null,
-  onTokenRefresh?: (token: string) => void | Promise<void>,
+  tokens: ServerTokenSet,
+  onTokens?: (tokens: ServerTokenSet) => void | Promise<void>,
 ) {
   const pathUrl = config.pathUrl || process.env.PATH_URL || "https://path.vchlearn.ca";
-  const courseId = config.courseId || process.env.NEXT_PUBLIC_PATH_COURSE_ID || process.env.PATH_COURSE_ID || "";
-  const courseUrl = config.courseUrl || process.env.NEXT_PUBLIC_PATH_COURSE_URL || process.env.COURSE_URL || "";
-  if (!courseId) {
-    throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
+  const courseId = config.courseId || process.env.PATH_COURSE_ID || "";
+  const courseUrl = config.courseUrl || process.env.COURSE_URL || "";
+  if (!courseId) throw new Error("[@vch-lt/path] courseId is required");
+
+  async function request<T>(url: string, options: { method?: "GET" | "POST"; body?: Record<string, unknown> } = {}): Promise<T> {
+    try {
+      return await apiRequest<T>(url, { ...options, token: tokens.accessToken });
+    } catch (error) {
+      if ((error as { statusCode?: number }).statusCode !== 401 || !tokens.refreshToken) throw error;
+      const refreshed = await apiRequest<TokenResponse>(`${pathUrl}/api/learner/auth/token`, {
+        method: "POST", body: { grantType: "refresh_token", refreshToken: tokens.refreshToken }, token: null,
+      });
+      tokens = { accessToken: refreshed.accessToken, refreshToken: refreshed.refreshToken ?? null };
+      await onTokens?.(tokens);
+      return apiRequest<T>(url, { ...options, token: tokens.accessToken });
+    }
   }
 
+  const getRegistration = () => request<RegistrationView>(`${pathUrl}/api/learner/registration`);
   return {
-    /**
-     * Build the Path login URL. Pass the result to Next.js `redirect()` (from `next/navigation`)
-     * or use it in a `NextResponse.redirect()` in middleware.
-     *
-     * @param callbackUrl - URL to return to after login. Defaults to `courseUrl` from config.
-     *
-     * @example
-     * ```ts
-     * import { redirect } from 'next/navigation';
-     *
-     * const path = await pathServerSDK({ courseId: 'your-course-id', courseUrl: 'https://your-site.com' });
-     * const auth = await path.checkAuth();
-     * if (!auth.isAuthenticated) redirect(path.getLoginUrl());
-     * ```
-     */
-    getLoginUrl: (callbackUrl?: string): string => {
-      const callback = encodeURIComponent(callbackUrl || courseUrl);
-      return `${pathUrl}/learner/login?courseId=${courseId}&callbackUrl=${callback}`;
-    },
-
-    /**
-     * Check authentication status and return enrollment data if authenticated.
-     */
+    pathUrl, courseId, courseUrl,
     checkAuth: async (): Promise<AuthStatus> => {
-      try {
-        const enrollment = await serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh);
-        return { isAuthenticated: true, enrollment };
-      } catch {
-        return { isAuthenticated: false };
-      }
+      try { return { isAuthenticated: true, registration: await getRegistration() }; }
+      catch { return { isAuthenticated: false }; }
     },
-
-    /**
-     * Get enrollment and progress data for the current user.
-     */
-    getEnrollmentAndProgress: async (): Promise<Enrollment> => {
-      return serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh);
-    },
-
-    /**
-     * Submit progress for a milestone. Pass a bare value to mark it complete, or a
-     * `{ data, complete }` payload to control completeness independently of the value. Omit the
-     * second argument for a completed data-less `completion` milestone.
-     */
-    submitProgress: async (
-      milestoneSlug: string,
-      valueOrPayload?: SubmitProgressInput,
-    ): Promise<Progress> => {
-      return serverFetch<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh, {
-        method: "POST",
-        body: toSubmitBody(milestoneSlug, valueOrPayload),
-      });
+    getRegistration,
+    submit: (slug: string, value: ActivityValue) => request<ProgressEvent>(`${pathUrl}/api/learner/activities/${encodeURIComponent(slug)}/submissions`, { method: "POST", body: { value } }),
+    attest: (slug: string) => request<ProgressEvent>(`${pathUrl}/api/learner/activities/${encodeURIComponent(slug)}/attestation`, { method: "POST", body: { complete: true } }),
+    assertComplete: (slug: string) => request<ProgressEvent>(`${pathUrl}/api/learner/activities/${encodeURIComponent(slug)}/completion`, { method: "POST", body: { complete: true } }),
+    revoke: async () => {
+      if (tokens.refreshToken) await apiRequest(`${pathUrl}/api/learner/auth/revoke`, { method: "POST", body: { token: tokens.refreshToken }, token: null });
+      tokens = { accessToken: null, refreshToken: null };
+      await onTokens?.(tokens);
     },
   };
 }
