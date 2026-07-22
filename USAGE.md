@@ -16,7 +16,7 @@ export const path = pathSDK({
 // Use it anywhere in your app
 const authStatus = await path.checkAuth();
 const enrollment = await path.getEnrollmentAndProgress();
-await path.submitProgress("module-1-complete", true);
+await path.submitProgress("module-1-complete");
 ```
 
 ### Benefits
@@ -88,14 +88,17 @@ stored `value` does not imply completeness (a value can be saved on an incomplet
 
 #### `path.submitProgress(milestoneSlug, value | { data, complete } | { complete })`
 
-Submit progress for a milestone, identified by its slug. For a `completion` milestone, just pass the
-slug — that marks it complete. To attach data, pass a bare value (which also marks it complete), or a
-`{ data, complete }` payload to set completeness independently of the value. When `complete` is
-omitted, any submitted value is treated as complete.
+Submit progress for a milestone, identified by its slug. For a `completion` milestone, omit the
+second argument (or pass `true`) to mark it complete, and pass `false` to mark it incomplete. For
+every other milestone type, a bare second argument is data and marks the milestone complete. Use a
+`{ data, complete }` payload to set completeness independently of data.
 
 ```typescript
 // Completion milestone — just pass the slug to mark it complete.
 await path.submitProgress("module-1-complete");
+
+// For a completion milestone only, a boolean second argument sets completeness.
+await path.submitProgress("module-1-complete", false);
 
 // Attach a value (also marks it complete).
 await path.submitProgress("quiz-score", 95);
@@ -104,12 +107,16 @@ await path.submitProgress("quiz-score", 95);
 await path.submitProgress("module-1-checkbox", { data: false, complete: true });
 await path.submitProgress("reflection", { data: "draft", complete: false });
 
-// Mark a completion milestone as not-yet-complete.
+// The object form also works for a completion milestone.
 await path.submitProgress("attended-orientation", { complete: false });
 ```
 
 Data-bearing milestones require type-valid data even when marked incomplete. Only a milestone whose
-type is `completion` accepts an omitted value; its returned `Progress.value` is `null`.
+type is `completion` accepts an omitted value or interprets a bare boolean as completeness; its
+returned `Progress.value` is `null`.
+
+Deploy the matching Path API change before relying on the completion boolean shorthand. Against an
+older backend, use `{ complete: false }` to mark a completion milestone incomplete.
 
 Returns the created `Progress` record (including its stored `value` and `complete` flag).
 

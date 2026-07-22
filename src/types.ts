@@ -74,6 +74,7 @@ export interface AuthStatus {
  * ```ts
  * // Record the value `false` but mark the milestone complete anyway.
  * await path.submitProgress("module-1-checkbox", { data: false, complete: true });
+ * // Equivalent to path.submitProgress("attended-orientation", false).
  * await path.submitProgress("attended-orientation", { complete: false });
  * ```
  */
@@ -99,7 +100,11 @@ export type MilestoneValue = boolean | number | string | Array<string | number>;
 /** Milestone data shapes supported by the Path API. */
 export type MilestoneType = "boolean" | "string" | "array" | "number" | "completion";
 
-/** Accepted second argument to `submitProgress`. Omit it for a completed completion milestone. */
+/**
+ * Accepted second argument to `submitProgress`. For a data-less completion milestone, omit it or
+ * pass `true` to mark it complete, and pass `false` to mark it incomplete. For every other type, a
+ * bare value is milestone data.
+ */
 export type SubmitProgressInput = MilestoneValue | SubmitProgressPayload;
 
 /**

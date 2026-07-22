@@ -98,9 +98,10 @@ export function createServerSDK(
     },
 
     /**
-     * Submit progress for a milestone. Pass a bare value to mark it complete, or a
-     * `{ data, complete }` payload to control completeness independently of the value. Omit the
-     * second argument for a completed data-less `completion` milestone.
+     * Submit progress for a milestone. For a data-less `completion` milestone, omit the second
+     * argument (or pass `true`) to mark it complete, and pass `false` to mark it incomplete. For
+     * every other type, a bare value is data and marks the milestone complete. Use a
+     * `{ data, complete }` payload to control completeness independently of data.
      */
     submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput): Promise<Progress> => {
       return serverFetch<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh, {

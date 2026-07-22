@@ -32,7 +32,7 @@ export function getProgress(enrollment: Enrollment, milestoneSlug: string): Prog
  *
  * // Use the SDK
  * const auth = await path.checkAuth();
- * await path.submitProgress('module-1-complete', true);
+ * await path.submitProgress("module-1-complete");
  * ```
  */
 export function pathSDK(config: LearnerAPIConfig) {
@@ -116,13 +116,15 @@ export function pathSDK(config: LearnerAPIConfig) {
     /**
      * Submit progress for a milestone.
      *
-     * For a `completion` milestone, just pass the slug — that marks it complete. To attach data,
-     * pass a bare value (which also marks it complete), or a `{ data, complete }` payload to control
-     * completeness independently of the value.
+     * For a `completion` milestone, omit the second argument (or pass `true`) to mark it complete;
+     * pass `false` to mark it incomplete. For every other milestone type, a bare second argument is
+     * data and marks the milestone complete. Use `{ data, complete }` to control the two fields
+     * independently.
      *
      * @example
      * ```ts
      * await path.submitProgress("module-1-complete");                                  // completion milestone — done
+     * await path.submitProgress("module-1-complete", false);                           // completion milestone — not done
      * await path.submitProgress("module-1-quiz", true);                                // value true, complete
      * await path.submitProgress("module-1-checkbox", { data: false, complete: true }); // value false, complete
      * await path.submitProgress("reflection", { data: "draft", complete: false });     // saved but incomplete

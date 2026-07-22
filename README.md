@@ -72,6 +72,13 @@ For a `completion` milestone — the most common case — just pass the slug. Th
 await path.submitProgress("module-1-complete");
 ```
 
+Pass a boolean second argument to set a `completion` milestone's completion state directly:
+
+```ts
+await path.submitProgress("module-1-complete", true);  // complete
+await path.submitProgress("module-1-complete", false); // incomplete
+```
+
 To attach data, pass a bare value. That records it and marks the milestone complete:
 
 ```ts
@@ -79,9 +86,9 @@ await path.submitProgress("quiz-score", 85);
 await path.submitProgress("chapter", "introduction");
 ```
 
-To control completeness independently of the value, pass a `{ data, complete }` payload. When
-`complete` is omitted, any submitted value is treated as complete (so a `false` or empty value still
-completes the milestone unless you say otherwise):
+For every data-bearing milestone type, the second argument is always data. To control completeness
+independently of that data, pass a `{ data, complete }` payload. When `complete` is omitted, a
+submitted data value is treated as complete (so `false` still completes a `boolean` milestone):
 
 ```ts
 // Record the value `false` but mark the milestone complete anyway.
@@ -90,19 +97,23 @@ await path.submitProgress("module-1-checkbox", { data: false, complete: true });
 // Save a draft without completing the milestone.
 await path.submitProgress("reflection", { data: "draft", complete: false });
 
-// Mark a completion milestone as not-yet-complete.
+// The object form also works for a completion milestone.
 await path.submitProgress("attended-orientation", { complete: false });
 ```
 
 Data-bearing milestone types always require a type-valid value, even when `complete` is `false`.
-The `completion` milestone type is the only type that accepts no value. In progress responses its
-`value` is `null`, while the submission state remains available as `complete`.
+The data-less `completion` type is the only type that interprets a bare boolean as completeness
+instead of data. In progress responses its `value` is `null`, while the submission state remains
+available as `complete`.
 
 If an administrator changes a milestone's type after progress was submitted, the API coerces the
 stored value to the current type when it is read so it remains displayable and editable.
 
 Deploy the compatible Path API before upgrading to SDK `0.4.0`; older API versions discard the
 unknown `complete` request field.
+
+The boolean shorthand for `completion` milestones also requires a Path API version that supports
+it. Until that backend change is deployed, use `{ complete: false }` to mark one incomplete.
 
 ### Get enrollment and progress
 
@@ -260,7 +271,7 @@ When `submitProgress()` succeeds, the progress array updates reactively — ever
 | `auth` | `AuthStatus` | Reactive auth state (updates after `submitProgress` / `logout` / `refreshAuth`) |
 | `isLoading` | `boolean` | `true` while the initial fetch is in-flight (only when no `initialAuth`) |
 | `getProgress(slug)` | `Progress \| undefined` | Look up a progress record by milestone slug |
-| `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise<Progress>` | Submit progress (bare value ⇒ complete) and update local state |
+| `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise<Progress>` | Submit progress; a completion boolean sets state, otherwise a bare value is data |
 | `login(callbackUrl?)` | `void` | Redirect to Path login |
 | `logout()` | `Promise<void>` | Log out and clear state |
 | `refreshAuth()` | `Promise<void>` | Re-fetch auth from the server |
@@ -366,7 +377,7 @@ const complete = async () => {
 | ----------------------------- | ----------------------- | ----------------------------------------------- |
 | `checkAuth()`                 | `AsyncData<AuthStatus>` | Auth status + enrollment. SSR-safe.             |
 | `getEnrollmentAndProgress()`  | `AsyncData<Enrollment>` | Full enrollment data. SSR-safe.                 |
-| `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise`               | Record a milestone (bare value ⇒ complete). Works on server and client. |
+| `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise`               | Record progress; completion booleans set state, other bare values are data. |
 | `getProgress(enrollment, slug)` | `Progress \| undefined` | Look up a record by slug. Read its `.complete` flag for completeness, not `.value`. |
 | `login(callbackUrl?)`         | `void`                  | Redirect to Path login. Client-only.            |
 | `logout()`                    | `Promise`               | Clear session and log out. Client-only.         |
@@ -436,7 +447,7 @@ Returns an SDK instance with:
 | `login(callbackUrl?)`                  | Redirects to Path login. Pass `window.location.href` to return to current page |
 | `logout()`                             | Clears token and calls logout API                                              |
 | `getEnrollmentAndProgress()`           | Returns full enrollment + progress data                                        |
-| `submitProgress(milestoneSlug, value \| { data, complete } \| { complete })` | Records progress for a milestone (bare value ⇒ complete)                        |
+| `submitProgress(milestoneSlug, value \| { data, complete } \| { complete })` | Records progress; completion booleans set state, other bare values are data     |
 
 ### `getProgress(enrollment, slug)` — cross-platform utility
 
