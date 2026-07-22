@@ -116,16 +116,16 @@ export function pathSDK(config: LearnerAPIConfig) {
     /**
      * Submit progress for a milestone.
      *
-     * Pass a bare value to record it and mark the milestone complete, or a `{ data, complete }`
-     * payload to control completeness independently of the value. Omit the second argument for a
-     * completed data-less `completion` milestone.
+     * For a `completion` milestone, just pass the slug — that marks it complete. To attach data,
+     * pass a bare value (which also marks it complete), or a `{ data, complete }` payload to control
+     * completeness independently of the value.
      *
      * @example
      * ```ts
-     * await path.submitProgress("module-1-complete", true);                    // value true, complete
+     * await path.submitProgress("module-1-complete");                                  // completion milestone — done
+     * await path.submitProgress("module-1-quiz", true);                                // value true, complete
      * await path.submitProgress("module-1-checkbox", { data: false, complete: true }); // value false, complete
      * await path.submitProgress("reflection", { data: "draft", complete: false });     // saved but incomplete
-     * await path.submitProgress("attended-orientation");                                // completion milestone
      * ```
      */
     submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput): Promise<Progress> => {

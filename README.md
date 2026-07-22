@@ -66,10 +66,15 @@ console.log(auth.enrollment?.progress);
 
 ### Submit progress
 
-Passing a bare value records it and marks the milestone complete:
+For a `completion` milestone — the most common case — just pass the slug. That marks it complete:
 
 ```ts
-await path.submitProgress("module-1-complete", true);
+await path.submitProgress("module-1-complete");
+```
+
+To attach data, pass a bare value. That records it and marks the milestone complete:
+
+```ts
 await path.submitProgress("quiz-score", 85);
 await path.submitProgress("chapter", "introduction");
 ```
@@ -85,8 +90,7 @@ await path.submitProgress("module-1-checkbox", { data: false, complete: true });
 // Save a draft without completing the milestone.
 await path.submitProgress("reflection", { data: "draft", complete: false });
 
-// A data-less "completion" milestone: omit the value entirely.
-await path.submitProgress("attended-orientation");
+// Mark a completion milestone as not-yet-complete.
 await path.submitProgress("attended-orientation", { complete: false });
 ```
 

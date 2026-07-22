@@ -88,20 +88,23 @@ stored `value` does not imply completeness (a value can be saved on an incomplet
 
 #### `path.submitProgress(milestoneSlug, value | { data, complete } | { complete })`
 
-Submit progress for a milestone, identified by its slug. Pass a bare value to record it and mark the
-milestone complete, or a `{ data, complete }` payload to set completeness independently of the value.
-When `complete` is omitted, any submitted value is treated as complete.
+Submit progress for a milestone, identified by its slug. For a `completion` milestone, just pass the
+slug — that marks it complete. To attach data, pass a bare value (which also marks it complete), or a
+`{ data, complete }` payload to set completeness independently of the value. When `complete` is
+omitted, any submitted value is treated as complete.
 
 ```typescript
-await path.submitProgress("module-1-complete", true);
+// Completion milestone — just pass the slug to mark it complete.
+await path.submitProgress("module-1-complete");
+
+// Attach a value (also marks it complete).
 await path.submitProgress("quiz-score", 95);
 
 // Record a value but control completeness explicitly.
 await path.submitProgress("module-1-checkbox", { data: false, complete: true });
 await path.submitProgress("reflection", { data: "draft", complete: false });
 
-// A data-less "completion" milestone carries no value.
-await path.submitProgress("attended-orientation");
+// Mark a completion milestone as not-yet-complete.
 await path.submitProgress("attended-orientation", { complete: false });
 ```
 
