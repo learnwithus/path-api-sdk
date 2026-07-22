@@ -77,7 +77,14 @@ Get enrollment and progress data.
 const enrollment = await path.getEnrollmentAndProgress();
 console.log("Course:", enrollment.course.title);
 console.log("Progress:", enrollment.progress);
+
+// Check completeness via `.complete`, not `.value`:
+const done = enrollment.progress.filter((p) => p.complete).length;
 ```
+
+Each `Progress` record carries a `complete` boolean — use it to tell whether a milestone is done. A
+stored `value` does not imply completeness (a value can be saved on an incomplete submission), and a
+`completion` milestone is complete while its `value` is `null`.
 
 #### `path.submitProgress(milestoneSlug, value | { data, complete } | { complete })`
 
