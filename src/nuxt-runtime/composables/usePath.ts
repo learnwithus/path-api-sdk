@@ -1,7 +1,7 @@
 import { useAsyncData, useRequestEvent, useRuntimeConfig } from "#app";
 import pathSDK, { getProgress as _getProgress } from "@vch-lt/path";
 import { pathNuxtSDK as _pathNuxtSDK } from "@vch-lt/path/nuxt";
-import type { MilestoneValue, Enrollment } from "@vch-lt/path";
+import type { SubmitProgressInput, Enrollment } from "@vch-lt/path";
 
 function _config() {
   // runtimeConfig.public is available on both server and client
@@ -41,11 +41,11 @@ export const usePath = () => ({
       import.meta.server ? (await _serverSDK()).getEnrollmentAndProgress() : _clientSDK().getEnrollmentAndProgress(),
     ),
 
-  /** Submit a milestone progress value. Works on server and client. */
-  submitProgress: async (milestoneSlug: string, value: MilestoneValue) =>
+  /** Submit a milestone progress value, or a `{ data, complete }` payload. Works on server and client. */
+  submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) =>
     import.meta.server
-      ? (await _serverSDK()).submitProgress(milestoneSlug, value)
-      : _clientSDK().submitProgress(milestoneSlug, value),
+      ? (await _serverSDK()).submitProgress(milestoneSlug, valueOrPayload)
+      : _clientSDK().submitProgress(milestoneSlug, valueOrPayload),
 
   /** Redirect to the Path login page. Client-only. */
   login: (callbackUrl?: string) => {

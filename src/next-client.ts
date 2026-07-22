@@ -16,17 +16,18 @@ import type {
   AuthStatus,
   Enrollment,
   LearnerAPIConfig,
-  MilestoneValue,
   Progress,
-  SubmitProgressResponse,
+  SubmitProgressInput,
 } from "./types.js";
 
 export type {
   AuthStatus,
   Enrollment,
   LearnerAPIConfig,
+  MilestoneType,
   MilestoneValue,
-  SubmitProgressResponse,
+  SubmitProgressInput,
+  SubmitProgressPayload,
 } from "./types.js";
 export type { Progress, User, Course, Milestone } from "./types.js";
 
@@ -42,7 +43,10 @@ interface PathContextValue {
   auth: AuthStatus;
   isLoading: boolean;
   getProgress: (milestoneSlug: string) => Progress | undefined;
-  submitProgress: (milestoneSlug: string, value: MilestoneValue) => Promise<SubmitProgressResponse>;
+  submitProgress: (
+    milestoneSlug: string,
+    valueOrPayload?: SubmitProgressInput,
+  ) => Promise<Progress>;
   login: (callbackUrl?: string) => void;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
@@ -93,26 +97,20 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
   }, []);
 
   const submitProgress = useCallback(
-    async (milestoneSlug: string, value: MilestoneValue) => {
-      const result = await sdk.submitProgress(milestoneSlug, value);
-      if (result.success) {
-        setAuth((prev) => {
-          if (!prev.enrollment) return prev;
-          const existing = prev.enrollment.progress ?? [];
-          const idx = existing.findIndex(
-            (p) => p.courseMilestoneId === result.progress.courseMilestoneId,
-          );
-          const updated =
-            idx >= 0
-              ? existing.map((p, i) => (i === idx ? result.progress : p))
-              : [...existing, result.progress];
-          return {
-            ...prev,
-            enrollment: { ...prev.enrollment, progress: updated },
-          };
-        });
-      }
-      return result;
+    async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) => {
+      const progress = await sdk.submitProgress(milestoneSlug, valueOrPayload);
+      setAuth((prev) => {
+        if (!prev.enrollment) return prev;
+        const existing = prev.enrollment.progress ?? [];
+        const idx = existing.findIndex((p) => p.courseMilestoneId === progress.courseMilestoneId);
+        const updated =
+          idx >= 0 ? existing.map((p, i) => (i === idx ? progress : p)) : [...existing, progress];
+        return {
+          ...prev,
+          enrollment: { ...prev.enrollment, progress: updated },
+        };
+      });
+      return progress;
     },
     [sdk],
   );

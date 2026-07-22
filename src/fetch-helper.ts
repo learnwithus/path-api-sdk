@@ -1,4 +1,4 @@
-import { parse, serialize } from "cookie";
+import { parseCookie, stringifySetCookie } from "cookie";
 import type { APIError } from "./types.js";
 import { TOKEN_STORAGE_KEY } from "./constants.js";
 
@@ -18,13 +18,17 @@ export function setToken(token: string | null): void {
   _token = token;
   if (typeof document !== "undefined") {
     if (token) {
-      document.cookie = serialize(TOKEN_STORAGE_KEY, token, {
+      document.cookie = stringifySetCookie({
+        name: TOKEN_STORAGE_KEY,
+        value: token,
         path: "/",
         sameSite: "lax",
         secure: location.protocol === "https:",
       });
     } else {
-      document.cookie = serialize(TOKEN_STORAGE_KEY, "", {
+      document.cookie = stringifySetCookie({
+        name: TOKEN_STORAGE_KEY,
+        value: "",
         path: "/",
         expires: new Date(0),
       });
@@ -37,7 +41,7 @@ export function setToken(token: string | null): void {
  */
 export function getToken(): string | null {
   if (!_token && typeof document !== "undefined") {
-    _token = parse(document.cookie)[TOKEN_STORAGE_KEY] ?? null;
+    _token = parseCookie(document.cookie)[TOKEN_STORAGE_KEY] ?? null;
   }
   return _token;
 }
@@ -74,6 +78,7 @@ export async function apiRequest<T = unknown>(url: string, options: FetchOptions
 
   const response = await fetch(url, {
     method,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),

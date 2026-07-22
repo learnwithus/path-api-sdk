@@ -6,14 +6,31 @@
       <input type="text" id="milestoneSlug" v-model="milestoneSlug" placeholder="e.g., module-1-complete" />
     </div>
     <div class="form-group">
+      <label>
+        <input v-model="isCompletionMilestone" type="checkbox" />
+        Data-less completion milestone
+      </label>
+      <div class="hint">Completion milestones submit only the completeness flag and never a value.</div>
+    </div>
+    <div class="form-group">
       <label for="progressValue">Value:</label>
       <input
         type="text"
         id="progressValue"
         v-model="progressValue"
-        placeholder="e.g., true, 'Completed', 95, or {score: 95}"
+        :disabled="isCompletionMilestone"
+        placeholder="e.g., true, Completed, 95, or [1, 2]"
       />
-      <div class="hint">Enter any value. JSON will be parsed, otherwise treated as string.</div>
+      <div class="hint">Required for data-bearing milestones. JSON is parsed; other input is treated as text.</div>
+    </div>
+    <div class="form-group">
+      <label for="completeChoice">Complete:</label>
+      <select id="completeChoice" v-model="completeChoice">
+        <option value="omit">Omit (any data ⇒ complete)</option>
+        <option value="true">true</option>
+        <option value="false">false</option>
+      </select>
+      <div class="hint">Send an explicit completeness flag, or omit it to let the value imply completion.</div>
     </div>
     <div class="form-group">
       <button id="submitProgressBtn" @click="submitProgress" :disabled="loading">
@@ -37,16 +54,17 @@
         <div style="margin-top: 15px">
           <strong>Progress Details:</strong>
           <div style="margin-left: 15px">
-            <div>Progress ID: {{ result.progress.id }}</div>
-            <div>User ID: {{ result.progress.userId }}</div>
+            <div>Progress ID: {{ result.id }}</div>
+            <div>User ID: {{ result.userId }}</div>
             <div>
               Milestone ID:
-              {{ result.progress.courseMilestoneId }}
+              {{ result.courseMilestoneId }}
             </div>
-            <div>Value: {{ result.progress.value }}</div>
+            <div>Value: {{ result.value }}</div>
+            <div>Complete: {{ result.complete }}</div>
             <div>
               Created:
-              {{ new Date(result.progress.createdAt).toLocaleString() }}
+              {{ new Date(result.createdAt).toLocaleString() }}
             </div>
           </div>
         </div>
@@ -88,7 +106,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { PathSDKInstance, SubmitProgressResponse } from "../../src/index";
+import type { PathSDKInstance, Progress, SubmitProgressPayload } from "../../src/index";
 
 const { pathInstance } = defineProps<{
   pathInstance?: PathSDKInstance;
@@ -100,9 +118,11 @@ const emit = defineEmits<{
 
 const milestoneSlug = ref("");
 const progressValue = ref("");
+const isCompletionMilestone = ref(false);
+const completeChoice = ref<"omit" | "true" | "false">("omit");
 const loading = ref(false);
 const validationError = ref<string | null>(null);
-const result = ref<SubmitProgressResponse | null>(null);
+const result = ref<Progress | null>(null);
 const apiError = ref<string | null>(null);
 
 async function submitProgress() {
@@ -121,23 +141,30 @@ async function submitProgress() {
     return;
   }
 
-  if (progressValue.value === "") {
-    validationError.value = "Please enter a value";
-    return;
-  }
-
-  // Parse value - try JSON first, fallback to string
-  let parsedValue: any;
+  // Parse data-bearing values as JSON first, falling back to text. A blank input is a valid empty
+  // string; completion milestones omit the value entirely.
+  let parsedValue: any = progressValue.value;
   try {
     parsedValue = JSON.parse(progressValue.value);
   } catch {
-    parsedValue = progressValue.value;
+    // Keep the text value.
   }
 
   loading.value = true;
 
   try {
-    const response = await pathInstance.submitProgress(milestoneSlug.value, parsedValue);
+    const explicitComplete = completeChoice.value === "omit" ? undefined : completeChoice.value === "true";
+    const response = isCompletionMilestone.value
+      ? await pathInstance.submitProgress(
+          milestoneSlug.value,
+          explicitComplete === undefined ? undefined : { complete: explicitComplete },
+        )
+      : await pathInstance.submitProgress(
+          milestoneSlug.value,
+          explicitComplete === undefined
+            ? parsedValue
+            : ({ data: parsedValue, complete: explicitComplete } satisfies SubmitProgressPayload),
+        );
     result.value = response;
     console.log("Progress submitted:", response);
 

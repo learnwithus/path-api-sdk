@@ -16,7 +16,7 @@ export const path = pathSDK({
 // Use it anywhere in your app
 const authStatus = await path.checkAuth();
 const enrollment = await path.getEnrollmentAndProgress();
-await path.submitProgress(1, true);
+await path.submitProgress("module-1-complete", true);
 ```
 
 ### Benefits
@@ -77,17 +77,38 @@ Get enrollment and progress data.
 const enrollment = await path.getEnrollmentAndProgress();
 console.log("Course:", enrollment.course.title);
 console.log("Progress:", enrollment.progress);
+
+// Check completeness via `.complete`, not `.value`:
+const done = enrollment.progress.filter((p) => p.complete).length;
 ```
 
-#### `path.submitProgress(milestoneId, value)`
+Each `Progress` record carries a `complete` boolean — use it to tell whether a milestone is done. A
+stored `value` does not imply completeness (a value can be saved on an incomplete submission), and a
+`completion` milestone is complete while its `value` is `null`.
 
-Submit progress for a milestone.
+#### `path.submitProgress(milestoneSlug, value | { data, complete } | { complete })`
+
+Submit progress for a milestone, identified by its slug. Pass a bare value to record it and mark the
+milestone complete, or a `{ data, complete }` payload to set completeness independently of the value.
+When `complete` is omitted, any submitted value is treated as complete.
 
 ```typescript
-await path.submitProgress(1, true);
-await path.submitProgress(2, "Completed");
-await path.submitProgress(3, { score: 95 });
+await path.submitProgress("module-1-complete", true);
+await path.submitProgress("quiz-score", 95);
+
+// Record a value but control completeness explicitly.
+await path.submitProgress("module-1-checkbox", { data: false, complete: true });
+await path.submitProgress("reflection", { data: "draft", complete: false });
+
+// A data-less "completion" milestone carries no value.
+await path.submitProgress("attended-orientation");
+await path.submitProgress("attended-orientation", { complete: false });
 ```
+
+Data-bearing milestones require type-valid data even when marked incomplete. Only a milestone whose
+type is `completion` accepts an omitted value; its returned `Progress.value` is `null`.
+
+Returns the created `Progress` record (including its stored `value` and `complete` flag).
 
 ## TypeScript Types
 
@@ -101,7 +122,9 @@ import type {
   User,
   Course,
   AuthStatus,
-  SubmitProgressResponse,
+  SubmitProgressInput,
+  SubmitProgressPayload,
+  MilestoneType,
   MilestoneValue,
 } from "@vch-lt/path";
 ```

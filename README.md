@@ -66,11 +66,39 @@ console.log(auth.enrollment?.progress);
 
 ### Submit progress
 
+Passing a bare value records it and marks the milestone complete:
+
 ```ts
 await path.submitProgress("module-1-complete", true);
 await path.submitProgress("quiz-score", 85);
 await path.submitProgress("chapter", "introduction");
 ```
+
+To control completeness independently of the value, pass a `{ data, complete }` payload. When
+`complete` is omitted, any submitted value is treated as complete (so a `false` or empty value still
+completes the milestone unless you say otherwise):
+
+```ts
+// Record the value `false` but mark the milestone complete anyway.
+await path.submitProgress("module-1-checkbox", { data: false, complete: true });
+
+// Save a draft without completing the milestone.
+await path.submitProgress("reflection", { data: "draft", complete: false });
+
+// A data-less "completion" milestone: omit the value entirely.
+await path.submitProgress("attended-orientation");
+await path.submitProgress("attended-orientation", { complete: false });
+```
+
+Data-bearing milestone types always require a type-valid value, even when `complete` is `false`.
+The `completion` milestone type is the only type that accepts no value. In progress responses its
+`value` is `null`, while the submission state remains available as `complete`.
+
+If an administrator changes a milestone's type after progress was submitted, the API coerces the
+stored value to the current type when it is read so it remains displayable and editable.
+
+Deploy the compatible Path API before upgrading to SDK `0.4.0`; older API versions discard the
+unknown `complete` request field.
 
 ### Get enrollment and progress
 
@@ -78,6 +106,10 @@ await path.submitProgress("chapter", "introduction");
 const enrollment = await path.getEnrollmentAndProgress();
 console.log(enrollment.progress);
 ```
+
+Each `progress` record exposes completeness on its `complete` boolean — read that to tell whether a
+milestone is done. Don't infer completeness from `value`: a saved value can belong to an incomplete
+submission, and a `completion` milestone is complete with a `null` value.
 
 ### Logout
 
@@ -191,9 +223,13 @@ export function ProgressButton() {
   const { auth, submitProgress } = usePath();
   const progress = auth.enrollment?.progress ?? [];
 
+  // Completeness lives on `.complete` — count that, not the number of records.
+  // A record can exist (a value was saved) while still being incomplete.
+  const completedCount = progress.filter((p) => p.complete).length;
+
   return (
     <div>
-      <p>{progress.length} milestones completed</p>
+      <p>{completedCount} milestones completed</p>
       <button onClick={() => submitProgress("module-1", true)}>
         Complete Module 1
       </button>
@@ -220,7 +256,7 @@ When `submitProgress()` succeeds, the progress array updates reactively — ever
 | `auth` | `AuthStatus` | Reactive auth state (updates after `submitProgress` / `logout` / `refreshAuth`) |
 | `isLoading` | `boolean` | `true` while the initial fetch is in-flight (only when no `initialAuth`) |
 | `getProgress(slug)` | `Progress \| undefined` | Look up a progress record by milestone slug |
-| `submitProgress(slug, value)` | `Promise<SubmitProgressResponse>` | Submit progress and update local state on success |
+| `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise<Progress>` | Submit progress (bare value ⇒ complete) and update local state |
 | `login(callbackUrl?)` | `void` | Redirect to Path login |
 | `logout()` | `Promise<void>` | Log out and clear state |
 | `refreshAuth()` | `Promise<void>` | Re-fetch auth from the server |
@@ -230,12 +266,15 @@ When `submitProgress()` succeeds, the progress array updates reactively — ever
 ```tsx
 const { getProgress, submitProgress } = usePath();
 
-// Read progress
-const module1 = getProgress("module-1-completion");
-console.log(module1?.value); // "true"
+const module1 = getProgress("module-1");
 
-// After submitting, getProgress returns the updated value on the next render
-await submitProgress("module-1-completion", true);
+// Check completeness with `.complete` — never infer it from `.value`.
+console.log(module1?.complete); // true | false
+// `.value` is the stored data (and is always `null` for a `completion` milestone).
+console.log(module1?.value);
+
+// After submitting, getProgress returns the updated record on the next render
+await submitProgress("module-1", true);
 ```
 
 ### Route Handler
@@ -323,7 +362,8 @@ const complete = async () => {
 | ----------------------------- | ----------------------- | ----------------------------------------------- |
 | `checkAuth()`                 | `AsyncData<AuthStatus>` | Auth status + enrollment. SSR-safe.             |
 | `getEnrollmentAndProgress()`  | `AsyncData<Enrollment>` | Full enrollment data. SSR-safe.                 |
-| `submitProgress(slug, value)` | `Promise`               | Record a milestone. Works on server and client. |
+| `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise`               | Record a milestone (bare value ⇒ complete). Works on server and client. |
+| `getProgress(enrollment, slug)` | `Progress \| undefined` | Look up a record by slug. Read its `.complete` flag for completeness, not `.value`. |
 | `login(callbackUrl?)`         | `void`                  | Redirect to Path login. Client-only.            |
 | `logout()`                    | `Promise`               | Clear session and log out. Client-only.         |
 
@@ -392,7 +432,7 @@ Returns an SDK instance with:
 | `login(callbackUrl?)`                  | Redirects to Path login. Pass `window.location.href` to return to current page |
 | `logout()`                             | Clears token and calls logout API                                              |
 | `getEnrollmentAndProgress()`           | Returns full enrollment + progress data                                        |
-| `submitProgress(milestoneSlug, value)` | Records progress for a milestone                                               |
+| `submitProgress(milestoneSlug, value \| { data, complete } \| { complete })` | Records progress for a milestone (bare value ⇒ complete)                        |
 
 ### `getProgress(enrollment, slug)` — cross-platform utility
 
@@ -402,7 +442,8 @@ Import from `@vch-lt/path` (or `@vch-lt/path/next`). Looks up a progress record 
 import { getProgress } from "@vch-lt/path";
 
 const enrollment = await path.getEnrollmentAndProgress();
-const module1 = getProgress(enrollment, "module-1-completion");
+const module1 = getProgress(enrollment, "module-1");
+const isDone = module1?.complete ?? false; // read `.complete`, not `.value`
 ```
 
 ### `pathServerSDK(config?)` — Next.js server-side
@@ -423,7 +464,7 @@ Import from `@vch-lt/path/next`. Place in your root layout — automatically fet
 
 ### `usePath()` — Next.js reactive client hook
 
-Import from `@vch-lt/path/next` in Client Components. Returns reactive `auth`, `isLoading`, `submitProgress()`, `login()`, `logout()`, and `refreshAuth()`. Must be used within a `<PathProvider>` tree.
+Import from `@vch-lt/path/next` in Client Components. Returns reactive `auth`, `isLoading`, `getProgress()`, `submitProgress()`, `login()`, `logout()`, and `refreshAuth()`. Must be used within a `<PathProvider>` tree. Read a milestone's completeness from the returned record's `.complete` flag, not its `.value`.
 
 ### `pathClientSDK(config)` — Next.js client-side (low-level)
 
@@ -435,7 +476,7 @@ Import from `@vch-lt/path/nuxt`. Takes an H3 event and optional config (`courseI
 
 ### `usePath()` — Nuxt universal composable (Nuxt module only)
 
-Auto-imported. Works in pages, components, and layouts on both server and client. Data-fetching methods (`checkAuth`, `getEnrollmentAndProgress`) return `AsyncData` (Nuxt's `useAsyncData` result) — SSR-safe with no double-fetch. Action methods (`login`, `logout`, `submitProgress`) return Promises.
+Auto-imported. Works in pages, components, and layouts on both server and client. Data-fetching methods (`checkAuth`, `getEnrollmentAndProgress`) return `AsyncData` (Nuxt's `useAsyncData` result) — SSR-safe with no double-fetch. Action methods (`login`, `logout`, `submitProgress`) return Promises. `getProgress(enrollment, slug)` looks up a single record from an enrollment — check its `.complete` flag for completeness, not its `.value`.
 
 ### `pathServerSDK(options)` — generic server-side
 
