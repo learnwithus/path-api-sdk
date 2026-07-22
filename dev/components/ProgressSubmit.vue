@@ -79,8 +79,7 @@
               border-radius: 4px;
               overflow-x: auto;
             "
-            >{{ JSON.stringify(result, null, 2) }}</pre
-          >
+            >{{ JSON.stringify(result, null, 2) }}</pre>
         </details>
       </div>
 

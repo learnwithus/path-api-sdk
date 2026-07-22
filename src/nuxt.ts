@@ -159,7 +159,8 @@ export async function pathNuxtSDK(event: H3Event, config: ServerSDKConfig): Prom
 
   // Prefer context (set by middleware on first request); fall back to cookie
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const token: string | null = (event as any).context[PATH_TOKEN_CONTEXT_KEY] ?? getCookie(event, TOKEN_STORAGE_KEY) ?? null;
+  const token: string | null =
+    (event as any).context[PATH_TOKEN_CONTEXT_KEY] ?? getCookie(event, TOKEN_STORAGE_KEY) ?? null;
 
   return createServerSDK(config, token, (newToken) => {
     setCookie(event, TOKEN_STORAGE_KEY, newToken, {

@@ -128,10 +128,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * await path.submitProgress("attended-orientation");                                // completion milestone
      * ```
      */
-    submitProgress: async (
-      milestoneSlug: string,
-      valueOrPayload?: SubmitProgressInput,
-    ): Promise<Progress> => {
+    submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput): Promise<Progress> => {
       return await apiRequest<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, {
         method: "POST",
         body: toSubmitBody(milestoneSlug, valueOrPayload),

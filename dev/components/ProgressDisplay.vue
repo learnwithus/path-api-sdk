@@ -68,8 +68,7 @@
               border-radius: 4px;
               overflow-x: auto;
             "
-            >{{ JSON.stringify(enrollment, null, 2) }}</pre
-          >
+            >{{ JSON.stringify(enrollment, null, 2) }}</pre>
         </details>
       </div>
 

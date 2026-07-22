@@ -58,6 +58,5 @@ export const usePath = () => ({
   },
 
   /** Look up a progress record by milestone slug. Requires enrollment data. */
-  getProgress: (enrollment: Enrollment, milestoneSlug: string) =>
-    _getProgress(enrollment, milestoneSlug),
+  getProgress: (enrollment: Enrollment, milestoneSlug: string) => _getProgress(enrollment, milestoneSlug),
 });

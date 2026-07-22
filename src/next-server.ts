@@ -19,7 +19,6 @@ export type {
 } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
 
-
 /**
  * Next.js middleware that intercepts the ?path-token= query param on redirect from Path login.
  *
@@ -196,11 +195,7 @@ export interface PathProviderProps {
  * }
  * ```
  */
-export async function PathProvider({
-  children,
-  initialAuth: enableInitialAuth = true,
-  ...config
-}: PathProviderProps) {
+export async function PathProvider({ children, initialAuth: enableInitialAuth = true, ...config }: PathProviderProps) {
   let auth;
   if (enableInitialAuth) {
     const sdk = await pathServerSDK(config);

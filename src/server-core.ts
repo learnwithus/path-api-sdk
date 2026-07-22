@@ -79,7 +79,11 @@ export function createServerSDK(
      */
     checkAuth: async (): Promise<AuthStatus> => {
       try {
-        const enrollment = await serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh);
+        const enrollment = await serverFetch<Enrollment>(
+          `${pathUrl}/api/learner?courseId=${courseId}`,
+          token,
+          onTokenRefresh,
+        );
         return { isAuthenticated: true, enrollment };
       } catch {
         return { isAuthenticated: false };
@@ -98,10 +102,7 @@ export function createServerSDK(
      * `{ data, complete }` payload to control completeness independently of the value. Omit the
      * second argument for a completed data-less `completion` milestone.
      */
-    submitProgress: async (
-      milestoneSlug: string,
-      valueOrPayload?: SubmitProgressInput,
-    ): Promise<Progress> => {
+    submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput): Promise<Progress> => {
       return serverFetch<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh, {
         method: "POST",
         body: toSubmitBody(milestoneSlug, valueOrPayload),

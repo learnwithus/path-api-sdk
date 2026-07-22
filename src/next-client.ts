@@ -1,24 +1,9 @@
 "use client";
 
-import {
-  createContext,
-  createElement,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { pathSDK, getProgress as _getProgress } from "./index.js";
-import type {
-  AuthStatus,
-  Enrollment,
-  LearnerAPIConfig,
-  Progress,
-  SubmitProgressInput,
-} from "./types.js";
+import type { AuthStatus, Enrollment, LearnerAPIConfig, Progress, SubmitProgressInput } from "./types.js";
 
 export type {
   AuthStatus,
@@ -43,10 +28,7 @@ interface PathContextValue {
   auth: AuthStatus;
   isLoading: boolean;
   getProgress: (milestoneSlug: string) => Progress | undefined;
-  submitProgress: (
-    milestoneSlug: string,
-    valueOrPayload?: SubmitProgressInput,
-  ) => Promise<Progress>;
+  submitProgress: (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) => Promise<Progress>;
   login: (callbackUrl?: string) => void;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
@@ -77,9 +59,7 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
   }
   const sdk = sdkRef.current;
 
-  const [auth, setAuth] = useState<AuthStatus>(
-    () => initialAuth ?? { isAuthenticated: false },
-  );
+  const [auth, setAuth] = useState<AuthStatus>(() => initialAuth ?? { isAuthenticated: false });
   const [isLoading, setIsLoading] = useState(!initialAuth);
 
   // If no initialAuth was provided, fetch on mount
@@ -92,7 +72,9 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
         setIsLoading(false);
       }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -103,8 +85,7 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
         if (!prev.enrollment) return prev;
         const existing = prev.enrollment.progress ?? [];
         const idx = existing.findIndex((p) => p.courseMilestoneId === progress.courseMilestoneId);
-        const updated =
-          idx >= 0 ? existing.map((p, i) => (i === idx ? progress : p)) : [...existing, progress];
+        const updated = idx >= 0 ? existing.map((p, i) => (i === idx ? progress : p)) : [...existing, progress];
         return {
           ...prev,
           enrollment: { ...prev.enrollment, progress: updated },

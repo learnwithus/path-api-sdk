@@ -15,11 +15,7 @@ export function toSubmitBody(
 ): { milestoneSlug: string; value?: MilestoneValue; complete?: boolean } {
   if (valueOrPayload === undefined) return { milestoneSlug };
 
-  if (
-    typeof valueOrPayload === "object" &&
-    valueOrPayload !== null &&
-    !Array.isArray(valueOrPayload)
-  ) {
+  if (typeof valueOrPayload === "object" && valueOrPayload !== null && !Array.isArray(valueOrPayload)) {
     const { data, complete } = valueOrPayload as SubmitProgressPayload;
     return {
       milestoneSlug,
