@@ -132,6 +132,93 @@ submission, and a `completion` milestone is complete with a `null` value.
 await path.logout();
 ```
 
+### The learner store
+
+A course can define a **learner store**: a set of fields whose values belong to the learner and which
+the learner can write themselves. Staff configure the fields in Path; your course site reads and
+writes the values.
+
+It holds the side data a learner keeps alongside a course — **bookmarks, notes, reminders**. It is
+deliberately *not* for anything in the natural progression of learning. Use milestones and
+`submitProgress` for that: milestones record how far a learner has got, the learner store holds what
+they jotted down along the way.
+
+```ts
+const learnerStore = await path.getLearnerStore();
+
+learnerStore.notes.value; // "ask about the pre-op class"
+learnerStore.notes.label; // "My notes" — the label staff configured
+```
+
+The learner store is **keyed by field key**, so reads look like writes. A key is lowercase and
+kebab-case, for example `saved-bookmarks`. (Milestones use `slug`; learner store fields use `key`.)
+
+Write with `updateLearnerStore`. Only the keys you pass are changed — everything else is left alone,
+so you can save one field without sending the whole store back:
+
+```ts
+await path.updateLearnerStore({ notes: "ask about the pre-op class" });
+```
+
+It returns the stored values, keyed the same way. Prefer those over the ones you sent, because Path
+normalizes what it writes:
+
+```ts
+const stored = await path.updateLearnerStore({ "favourite-number": "7" });
+stored["favourite-number"]; // 7 — a number, not the string you sent
+```
+
+#### Field types
+
+Each field has a `fieldType` that tells you the shape of its `value`:
+
+| `fieldType`   | `value` is                | Notes                                          |
+| ------------- | ------------------------- | ---------------------------------------------- |
+| `text`        | `string`                  |                                                |
+| `textarea`    | `string`                  | Multi-line                                     |
+| `number`      | `number`                  |                                                |
+| `checkbox`    | `boolean`                 |                                                |
+| `select`      | `string`                  | One of `field.options`                         |
+| `multiselect` | `string[]`                | Several of `field.options`                     |
+| `object`      | `{ [subKey]: value }`     | One group of sub-fields; see `field.fields`    |
+| `repeatable`  | `Array<{ [subKey]: … }>`  | A list of such groups the learner can add to   |
+
+`object` and `repeatable` fields describe their sub-fields in `field.fields`. Sub-fields are always
+scalar — the nesting is one level deep.
+
+```ts
+// object — send every sub-field you want set
+await path.updateLearnerStore({ reminder: { text: "Book follow-up", due: "2026-08-01" } });
+
+// repeatable — the array you send replaces the whole list
+await path.updateLearnerStore({
+  bookmarks: [
+    { title: "Nutrition guide", url: "https://…" },
+    { title: "Exercise plan", url: "https://…" },
+  ],
+});
+```
+
+#### Rendering fields in order
+
+`getLearnerStore()` preserves the order staff configured, because Path returns the fields sorted and
+JavaScript keeps object keys in insertion order:
+
+```ts
+for (const field of Object.values(learner store)) {
+  render(field.label, field.value);
+}
+```
+
+The one exception is a field key made only of digits (`"123"`), which JavaScript hoists to the front
+of an object. If a course uses keys like that, don't rely on `Object.keys()` order for display.
+
+#### Who wrote a value
+
+`field.updatedAt` is the time the value was last written, or `null` if the learner has never written
+it. `field.updatedByName` is **always `null` here**: Path hides the writer's name whenever a learner
+reads their own record, so a learner never sees that a staff member edited a value.
+
 ---
 
 ## Next.js App Router
@@ -292,6 +379,43 @@ console.log(module1?.value);
 await submitProgress("module-1", true);
 ```
 
+### LearnerStore (`useLearnerStore()`)
+
+The learner store has its own hook rather than living on `usePath()`. `PathProvider` fetches auth for
+every app; folding the learner store in would cost a second request whether or not you use it. Call
+`useLearnerStore()` only in the components that need it — it still needs a `<PathProvider>` above it for
+configuration.
+
+```tsx
+"use client";
+import { useLearnerStore } from "@vch-lt/path/next";
+
+export function Notes() {
+  const { learner store, isLoading, error, update } = useLearnerStore();
+
+  if (isLoading) return <p>Loading…</p>;
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <textarea
+      defaultValue={String(learnerStore?.notes?.value ?? "")}
+      onBlur={(event) => update({ notes: event.target.value })}
+    />
+  );
+}
+```
+
+`update()` merges the stored values into local state, so the UI reflects what Path actually saved.
+It leaves `updatedAt` alone — call `refresh()` if you need the new timestamp.
+
+| Returned      | Type                                    | Description                                        |
+| ------------- | --------------------------------------- | -------------------------------------------------- |
+| `learner store`    | `LearnerStore \| null`                      | Keyed by field key; `null` until the first load     |
+| `isLoading`   | `boolean`                               | True during the initial load                        |
+| `error`       | `Error \| null`                         | From the last load or save                          |
+| `update`      | `(values) => Promise<void>`             | Write values; merges the result. Rejects on failure |
+| `refresh`     | `() => Promise<void>`                   | Re-read from Path                                   |
+
 ### Route Handler
 
 ```ts
@@ -379,8 +503,32 @@ const complete = async () => {
 | `getEnrollmentAndProgress()`  | `AsyncData<Enrollment>` | Full enrollment data. SSR-safe.                 |
 | `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise`               | Record progress; completion booleans set state, other bare values are data. |
 | `getProgress(enrollment, slug)` | `Progress \| undefined` | Look up a record by slug. Read its `.complete` flag for completeness, not `.value`. |
+| `getLearnerStore()`               | `AsyncData<LearnerStore>`   | The learner's learner store, keyed by field key. SSR-safe. |
+| `updateLearnerStore(values)`      | `Promise<LearnerStoreUpdate>` | Write learner store values. Only the keys you pass change. |
 | `login(callbackUrl?)`         | `void`                  | Redirect to Path login. Client-only.            |
 | `logout()`                    | `Promise`               | Clear session and log out. Client-only.         |
+
+### LearnerStore
+
+`getLearnerStore()` is SSR-safe like the other data-fetching methods — fetched on the server, reused on
+the client. It caches under the `path-learner store` key, so refresh it after writing:
+
+```vue
+<template>
+  <textarea v-model="notes" @blur="save" />
+</template>
+
+<script setup lang="ts">
+const { data: learner store, refresh } = await usePath().getLearnerStore();
+
+const notes = ref(String(learnerStore.value?.notes?.value ?? ""));
+
+async function save() {
+  await usePath().updateLearnerStore({ notes: notes.value });
+  await refresh();
+}
+</script>
+```
 
 ### Server routes (advanced)
 
@@ -427,6 +575,22 @@ app.get("/progress", async (req, res) => {
 });
 ```
 
+The learner store methods are on the server SDK too, with the same signatures as the browser client:
+
+```ts
+app.get("/learner store", async (req, res) => {
+  const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
+  const path = pathServerSDK({ courseId: "your-course-id", token });
+  res.json(await path.getLearnerStore());
+});
+
+app.post("/learner store", async (req, res) => {
+  const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
+  const path = pathServerSDK({ courseId: "your-course-id", token });
+  res.json(await path.updateLearnerStore(req.body));
+});
+```
+
 ---
 
 ## API Reference
@@ -448,6 +612,8 @@ Returns an SDK instance with:
 | `logout()`                             | Clears token and calls logout API                                              |
 | `getEnrollmentAndProgress()`           | Returns full enrollment + progress data                                        |
 | `submitProgress(milestoneSlug, value \| { data, complete } \| { complete })` | Records progress; completion booleans set state, other bare values are data     |
+| `getLearnerStore()`                        | Returns the learner's learner store as `LearnerStore`, keyed by field key               |
+| `updateLearnerStore(values)`               | Writes learner store values; only the keys you pass change. Returns what was stored  |
 
 ### `getProgress(enrollment, slug)` — cross-platform utility
 
@@ -481,6 +647,10 @@ Import from `@vch-lt/path/next`. Place in your root layout — automatically fet
 
 Import from `@vch-lt/path/next` in Client Components. Returns reactive `auth`, `isLoading`, `getProgress()`, `submitProgress()`, `login()`, `logout()`, and `refreshAuth()`. Must be used within a `<PathProvider>` tree. Read a milestone's completeness from the returned record's `.complete` flag, not its `.value`.
 
+### `useLearnerStore(config?)` — Next.js reactive learner store hook
+
+Import from `@vch-lt/path/next` in Client Components. Returns `{ learner store, isLoading, error, update, refresh }`. Deliberately separate from `usePath()` so apps that don't use the learner store don't pay for the extra request. Needs a `<PathProvider>` above it for configuration.
+
 ### `pathClientSDK(config)` — Next.js client-side (low-level)
 
 Import from `@vch-lt/path/next`. Re-export of `pathSDK` for direct use in Client Components without the reactive provider.
@@ -491,11 +661,11 @@ Import from `@vch-lt/path/nuxt`. Takes an H3 event and optional config (`courseI
 
 ### `usePath()` — Nuxt universal composable (Nuxt module only)
 
-Auto-imported. Works in pages, components, and layouts on both server and client. Data-fetching methods (`checkAuth`, `getEnrollmentAndProgress`) return `AsyncData` (Nuxt's `useAsyncData` result) — SSR-safe with no double-fetch. Action methods (`login`, `logout`, `submitProgress`) return Promises. `getProgress(enrollment, slug)` looks up a single record from an enrollment — check its `.complete` flag for completeness, not its `.value`.
+Auto-imported. Works in pages, components, and layouts on both server and client. Data-fetching methods (`checkAuth`, `getEnrollmentAndProgress`, `getLearnerStore`) return `AsyncData` (Nuxt's `useAsyncData` result) — SSR-safe with no double-fetch. Action methods (`login`, `logout`, `submitProgress`, `updateLearnerStore`) return Promises. `getProgress(enrollment, slug)` looks up a single record from an enrollment — check its `.complete` flag for completeness, not its `.value`.
 
 ### `pathServerSDK(options)` — generic server-side
 
-Import from `@vch-lt/path/server`. Takes `courseId`, `pathUrl`, and `token: string | null`. Synchronous — returns the SDK instance directly.
+Import from `@vch-lt/path/server`. Takes `courseId`, `pathUrl`, and `token: string | null`. Synchronous — returns the SDK instance directly. Exposes the same methods as the browser client, including `getLearnerStore()` and `updateLearnerStore()`.
 
 ---
 

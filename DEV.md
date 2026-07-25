@@ -50,7 +50,9 @@ dev/
 └── components/
     ├── AuthStatus.vue           # Authentication status display
     ├── ProgressDisplay.vue      # Enrollment & progress viewer
-    └── ProgressSubmit.vue       # Progress submission form
+    ├── ProgressSubmit.vue       # Progress submission form
+    ├── LearnerStoreEditor.vue       # LearnerStore viewer & editor
+    └── LearnerStoreScalarInput.vue  # One input for a scalar field
 ```
 
 ## Components
@@ -113,6 +115,25 @@ Form for submitting progress to milestones.
   payload forms
 - Detailed success/error feedback
 - Triggers progress reload after successful submission
+
+### LearnerStoreEditor.vue
+
+Reads and writes the learner's learner store, exercising `getLearnerStore()` and `updateLearnerStore()`.
+
+**Features:**
+
+- One input per field type, including `object` sub-fields and add/remove for `repeatable` items
+- Tracks which fields changed and sends only those, matching how `updateLearnerStore` is meant to be used
+- Shows the dirty count on the Save button, and a Discard button to reset the draft
+- Prints the server's stored values after a save, so you can see what Path normalized
+- Full learner store JSON in a collapsible panel
+- Reloads when the course ID changes
+
+### LearnerStoreScalarInput.vue
+
+One input for a single scalar field, used both for root-level fields and for sub-fields inside
+`object` and `repeatable` groups. Picks the control from `fieldType` — select, multi-select,
+checkbox, number, textarea, or text — and renders `select`/`multiselect` choices from `options`.
 
 ## Configuration
 
