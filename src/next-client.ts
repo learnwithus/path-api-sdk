@@ -3,7 +3,15 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { pathSDK, getProgress as _getProgress } from "./index.js";
-import type { AuthStatus, Enrollment, LearnerAPIConfig, Progress, SubmitProgressInput } from "./types.js";
+import type {
+  AuthStatus,
+  Enrollment,
+  LearnerAPIConfig,
+  Progress,
+  SubmitProgressInput,
+  LearnerStore,
+  LearnerStoreUpdate,
+} from "./types.js";
 
 export type {
   AuthStatus,
@@ -13,6 +21,15 @@ export type {
   MilestoneValue,
   SubmitProgressInput,
   SubmitProgressPayload,
+  LearnerStore,
+  LearnerStoreField,
+  LearnerStoreSubField,
+  LearnerStoreFieldType,
+  LearnerStoreScalarType,
+  LearnerStoreScalarValue,
+  LearnerStoreObjectValue,
+  LearnerStoreValue,
+  LearnerStoreUpdate,
 } from "./types.js";
 export type { Progress, User, Course, Milestone } from "./types.js";
 
@@ -144,4 +161,117 @@ export function usePath(): PathContextValue {
     throw new Error("usePath() must be used within a <PathProvider>");
   }
   return ctx;
+}
+
+export interface UseLearnerStoreResult {
+  /** The learner store, keyed by field key, or null until the first load finishes. */
+  learnerStore: LearnerStore | null;
+  isLoading: boolean;
+  /** The error from the last load or save, if one failed. */
+  error: Error | null;
+  /** Write values and merge the result into local state. Only the keys you pass are changed. */
+  update: (values: LearnerStoreUpdate) => Promise<void>;
+  /** Re-read the learner store from Path. */
+  refresh: () => Promise<void>;
+}
+
+/**
+ * Read and write the learner store.
+ *
+ * Deliberately separate from `usePath()`: the provider fetches auth for every app, and folding the
+ * the learner store in would cost a second request whether or not an app uses the feature. Call this hook
+ * only in the components that need it.
+ *
+ * Requires a `<PathProvider>` above it, for the SDK configuration.
+ *
+ * @example
+ * ```tsx
+ * "use client";
+ * import { useLearnerStore } from '@vch-lt/path/next';
+ *
+ * export function Notes() {
+ *   const { learnerStore, isLoading, update } = useLearnerStore();
+ *   if (isLoading) return <p>Loading…</p>;
+ *
+ *   return (
+ *     <textarea
+ *       defaultValue={String(learnerStore?.notes?.value ?? "")}
+ *       onBlur={(e) => update({ notes: e.target.value })}
+ *     />
+ *   );
+ * }
+ * ```
+ */
+export function useLearnerStore(config?: Partial<LearnerAPIConfig>): UseLearnerStoreResult {
+  const sdkRef = useRef<ReturnType<typeof pathSDK> | null>(null);
+  if (sdkRef.current === null) {
+    sdkRef.current = pathSDK({
+      courseUrl: typeof window !== "undefined" ? window.location.origin : "",
+      ...config,
+    } as LearnerAPIConfig);
+  }
+  const sdk = sdkRef.current;
+
+  const [learnerStore, setLearnerStore] = useState<LearnerStore | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      setLearnerStore(await sdk.getLearnerStore());
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught : new Error(String(caught)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sdk]);
+
+  useEffect(() => {
+    let cancelled = false;
+    sdk
+      .getLearnerStore()
+      .then((loaded) => {
+        if (!cancelled) setLearnerStore(loaded);
+      })
+      .catch((caught: unknown) => {
+        if (!cancelled) setError(caught instanceof Error ? caught : new Error(String(caught)));
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sdk]);
+
+  /**
+   * Merges the server's stored values rather than the ones passed in, since the server normalizes
+   * what it writes. `updatedAt` is left as-is; call `refresh()` if you need the new timestamp.
+   */
+  const update = useCallback(
+    async (values: LearnerStoreUpdate) => {
+      try {
+        const written = await sdk.updateLearnerStore(values);
+        setLearnerStore((previous) => {
+          if (!previous) return previous;
+          const next: LearnerStore = { ...previous };
+          for (const [key, value] of Object.entries(written)) {
+            const field = next[key];
+            if (field) next[key] = { ...field, value };
+          }
+          return next;
+        });
+        setError(null);
+      } catch (caught) {
+        const asError = caught instanceof Error ? caught : new Error(String(caught));
+        setError(asError);
+        throw asError;
+      }
+    },
+    [sdk],
+  );
+
+  return { learnerStore, isLoading, error, update, refresh };
 }
