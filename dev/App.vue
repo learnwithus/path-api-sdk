@@ -14,6 +14,8 @@
     <ProgressDisplay ref="progressDisplayRef" :path-instance="pathInstance" />
 
     <ProgressSubmit :path-instance="pathInstance" @progress-submitted="onProgressSubmitted" />
+
+    <LearnerStoreEditor ref="learnerStoreEditorRef" :path-instance="pathInstance" />
   </div>
 </template>
 
@@ -25,6 +27,7 @@ import { pathSDK } from "../src/index";
 import AuthStatus from "./components/AuthStatus.vue";
 import ProgressDisplay from "./components/ProgressDisplay.vue";
 import ProgressSubmit from "./components/ProgressSubmit.vue";
+import LearnerStoreEditor from "./components/LearnerStoreEditor.vue";
 
 // Get courseId from URL query parameter
 function getCourseIdFromUrl(): string | null {
@@ -58,6 +61,7 @@ const pathInstance = computed(() => {
 // Component refs
 const authStatusRef = ref<InstanceType<typeof AuthStatus>>();
 const progressDisplayRef = ref<InstanceType<typeof ProgressDisplay>>();
+const learnerStoreEditorRef = ref<InstanceType<typeof LearnerStoreEditor>>();
 
 // Watch courseId changes
 watch(courseId, async (newCourseId) => {
@@ -69,6 +73,7 @@ watch(courseId, async (newCourseId) => {
   // Now refresh auth and progress with the new pathInstance
   authStatusRef.value?.checkAuth();
   progressDisplayRef.value?.loadProgress();
+  learnerStoreEditorRef.value?.loadLearnerStore();
 });
 
 // Handle auth changes
