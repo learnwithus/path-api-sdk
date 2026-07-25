@@ -1,9 +1,21 @@
-import type { LearnerAPIConfig, Enrollment, AuthStatus, SubmitProgressInput, Progress } from "./types.js";
+import type {
+  LearnerAPIConfig,
+  Enrollment,
+  AuthStatus,
+  SubmitProgressInput,
+  Progress,
+  LearnerStore,
+  LearnerStoreField,
+  LearnerStoreUpdate,
+  LearnerStoreValue,
+} from "./types.js";
 import { apiRequest, setToken, getToken } from "./fetch-helper.js";
 import { toSubmitBody } from "./submit-payload.js";
+import { toLearnerStore, toLearnerStoreUpdate } from "./learner-store.js";
 
 export * from "./types.js";
 export { apiRequest, setToken, getToken } from "./fetch-helper.js";
+export { toLearnerStore, toLearnerStoreUpdate } from "./learner-store.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
 
 /**
@@ -135,6 +147,51 @@ export function pathSDK(config: LearnerAPIConfig) {
         method: "POST",
         body: toSubmitBody(milestoneSlug, valueOrPayload),
       });
+    },
+
+    /**
+     * Get the learner store: every field the course defined, keyed by field key, each with the
+     * learner's current value (or the field's default if they have not written one).
+     *
+     * @example
+     * ```ts
+     * const learnerStore = await path.getLearnerStore();
+     *
+     * learnerStore.notes.value;          // "ask about the pre-op class"
+     * learnerStore.notes.label;          // "My notes"
+     * learnerStore.bookmarks.fieldType;  // "repeatable"
+     * ```
+     */
+    getLearnerStore: async (): Promise<LearnerStore> => {
+      const fields = await apiRequest<LearnerStoreField[]>(`${pathUrl}/api/learner/store?courseId=${courseId}`);
+      return toLearnerStore(fields);
+    },
+
+    /**
+     * Write learner store values. Only the keys you pass are changed; the rest of the learner store is left
+     * alone. Returns the stored values, keyed the same way you sent them — the server may normalize
+     * what you wrote, so prefer the returned values over the ones you sent.
+     *
+     * @example
+     * ```ts
+     * // a scalar field
+     * await path.updateLearnerStore({ notes: "ask about the pre-op class" });
+     *
+     * // an object field, giving every sub-field
+     * await path.updateLearnerStore({ reminder: { text: "Book follow-up", due: "2026-08-01" } });
+     *
+     * // a repeatable field, replacing the whole list
+     * await path.updateLearnerStore({
+     *   bookmarks: [{ title: "Nutrition guide", url: "https://…" }],
+     * });
+     * ```
+     */
+    updateLearnerStore: async (values: LearnerStoreUpdate): Promise<LearnerStoreUpdate> => {
+      const written = await apiRequest<Array<{ key: string; value: LearnerStoreValue }>>(
+        `${pathUrl}/api/learner/store?courseId=${courseId}`,
+        { method: "POST", body: { values } },
+      );
+      return toLearnerStoreUpdate(written);
     },
   };
 }

@@ -14,6 +14,15 @@ export type {
   MilestoneValue,
   SubmitProgressInput,
   SubmitProgressPayload,
+  LearnerStore,
+  LearnerStoreField,
+  LearnerStoreSubField,
+  LearnerStoreFieldType,
+  LearnerStoreScalarType,
+  LearnerStoreScalarValue,
+  LearnerStoreObjectValue,
+  LearnerStoreValue,
+  LearnerStoreUpdate,
 } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
