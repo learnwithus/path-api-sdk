@@ -6,11 +6,14 @@
       <button id="loadLearnerStoreBtn" :disabled="loading" @click="loadLearnerStore">
         {{ loading ? "Loading..." : "Load Learner Store" }}
       </button>
-      <button v-if="fields.length" :disabled="saving || !dirtyKeys.length" @click="save">
+      <button v-if="keys.length" :disabled="saving || !dirtyKeys.length || !!invalidKeys.length" @click="save">
         {{ saving ? "Saving..." : `Save${dirtyKeys.length ? ` (${dirtyKeys.length})` : ""}` }}
       </button>
       <button v-if="dirtyKeys.length" :disabled="saving" @click="resetDraft">Discard changes</button>
-      <div class="hint">Only changed fields are sent, matching how updateLearnerStore is meant to be used.</div>
+      <div class="hint">
+        Only changed keys are sent, matching how updateLearnerStore is meant to be used. The learner API returns values
+        without definitions, so each value is edited as JSON — exactly what an SDK consumer sees.
+      </div>
     </div>
 
     <div v-if="apiError" class="error"><strong>✗ Error:</strong> {{ apiError }}</div>
@@ -20,55 +23,21 @@
       <pre>{{ JSON.stringify(saved, null, 2) }}</pre>
     </div>
 
-    <div v-if="loaded && !fields.length">This course has no learnerStore fields configured.</div>
+    <div v-if="loaded && !keys.length">This course has no learner store fields configured.</div>
 
-    <div v-for="field in fields" :key="field.key" class="form-group">
-      <label>
-        {{ field.label || field.key }}
-        <span class="hint">{{ field.key }} · {{ field.fieldType }}{{ field.updatedAt ? " · edited" : "" }}</span>
+    <div v-for="key in keys" :key="key" class="form-group">
+      <label :for="`ls-${key}`">
+        {{ key }}
+        <span class="hint">{{ describe(store?.[key]) }}</span>
       </label>
-
-      <!-- Scalar -->
-      <LearnerStoreScalarInput
-        v-if="isScalar(field.fieldType)"
-        v-model="draft[field.key] as LearnerStoreScalarValue | null"
-        :field-type="field.fieldType as LearnerStoreScalarType"
-        :options="field.options"
-      />
-
-      <!-- Object: one group of sub-fields -->
-      <div v-else-if="field.fieldType === 'object'" class="section">
-        <div v-for="subField in field.fields ?? []" :key="subField.key" class="form-group">
-          <label>{{ subField.label || subField.key }}</label>
-          <LearnerStoreScalarInput
-            v-model="(draft[field.key] as LearnerStoreObjectValue)[subField.key]"
-            :field-type="subField.fieldType"
-            :options="subField.options"
-          />
-        </div>
-      </div>
-
-      <!-- Repeatable: a list of such groups -->
-      <div v-else class="section">
-        <div v-for="(item, index) in draft[field.key] as LearnerStoreObjectValue[]" :key="index" class="section">
-          <div v-for="subField in field.fields ?? []" :key="subField.key" class="form-group">
-            <label>{{ subField.label || subField.key }} #{{ index + 1 }}</label>
-            <LearnerStoreScalarInput
-              v-model="item[subField.key]"
-              :field-type="subField.fieldType"
-              :options="subField.options"
-            />
-          </div>
-          <button @click="removeItem(field, index)">Remove #{{ index + 1 }}</button>
-        </div>
-        <button @click="addItem(field)">Add {{ field.label || field.key }}</button>
-      </div>
+      <textarea :id="`ls-${key}`" v-model="draft[key]" rows="3" />
+      <div v-if="invalidKeys.includes(key)" class="error">Not valid JSON — fix it or discard to save.</div>
     </div>
 
     <details v-if="loaded" style="margin-top: 20px">
       <summary style="cursor: pointer; font-weight: bold">Full Learner Store (JSON)</summary>
       <pre style="margin-top: 10px; background: rgba(0, 0, 0, 0.05); padding: 10px; border-radius: 4px">{{
-        JSON.stringify(learnerStore, null, 2)
+        JSON.stringify(store, null, 2)
       }}</pre>
     </details>
   </div>
@@ -76,49 +45,48 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import LearnerStoreScalarInput from "./LearnerStoreScalarInput.vue";
-import type {
-  PathSDKInstance,
-  LearnerStore,
-  LearnerStoreField,
-  LearnerStoreObjectValue,
-  LearnerStoreScalarType,
-  LearnerStoreScalarValue,
-  LearnerStoreUpdate,
-  LearnerStoreValue,
-} from "../../src/index";
+import type { LearnerStore, LearnerStoreValue, PathSDKInstance } from "../../src/index";
 
 const { pathInstance } = defineProps<{ pathInstance?: PathSDKInstance }>();
 
-const SCALAR_TYPES = ["text", "textarea", "number", "checkbox", "select", "multiselect"];
-const isScalar = (fieldType: string) => SCALAR_TYPES.includes(fieldType);
-
-const learnerStore = ref<LearnerStore | null>(null);
-const draft = ref<LearnerStoreUpdate>({});
+const store = ref<LearnerStore | null>(null);
+/** Each value is edited as JSON text: without definitions there is no type to pick a control from. */
+const draft = ref<Record<string, string>>({});
 const loading = ref(false);
 const saving = ref(false);
 const loaded = ref(false);
 const apiError = ref<string | null>(null);
-const saved = ref<LearnerStoreUpdate | null>(null);
+const saved = ref<LearnerStore | null>(null);
 
-// Object key order follows the order the course configured, so this drives display order too.
-const fields = computed<LearnerStoreField[]>(() => Object.values(learnerStore.value ?? {}));
+// Key order is the order staff configured, so it drives display order too.
+const keys = computed(() => Object.keys(store.value ?? {}));
+
+function parse(text: string): { ok: true; value: LearnerStoreValue } | { ok: false } {
+  try {
+    return { ok: true, value: JSON.parse(text) as LearnerStoreValue };
+  } catch {
+    return { ok: false };
+  }
+}
+
+const invalidKeys = computed(() => keys.value.filter((key) => !parse(draft.value[key] ?? "").ok));
 
 const dirtyKeys = computed(() =>
-  fields.value
-    .filter((field) => JSON.stringify(draft.value[field.key]) !== JSON.stringify(field.value))
-    .map((field) => field.key),
+  keys.value.filter((key) => {
+    const parsed = parse(draft.value[key] ?? "");
+    return parsed.ok && JSON.stringify(parsed.value) !== JSON.stringify(store.value?.[key]);
+  }),
 );
 
-/** Composite fields need a container to edit into, even when the learner has written nothing yet. */
-function toEditable(field: LearnerStoreField): LearnerStoreValue {
-  if (field.fieldType === "object") return { ...((field.value as LearnerStoreObjectValue) ?? {}) };
-  if (field.fieldType === "repeatable") return structuredClone((field.value as LearnerStoreObjectValue[]) ?? []);
-  return field.value;
+/** A one-word hint of the value's shape, standing in for the field type we no longer receive. */
+function describe(value: LearnerStoreValue | undefined): string {
+  if (Array.isArray(value)) return `array(${value.length})`;
+  if (value === null) return "null";
+  return typeof value;
 }
 
 function resetDraft() {
-  draft.value = Object.fromEntries(fields.value.map((field) => [field.key, toEditable(field)]));
+  draft.value = Object.fromEntries(keys.value.map((key) => [key, JSON.stringify(store.value?.[key] ?? null, null, 2)]));
   saved.value = null;
 }
 
@@ -128,13 +96,13 @@ async function loadLearnerStore() {
   apiError.value = null;
   saved.value = null;
   try {
-    learnerStore.value = await pathInstance.getLearnerStore();
+    store.value = await pathInstance.getLearnerStore();
     resetDraft();
     loaded.value = true;
-    console.log("Learner store loaded:", learnerStore.value);
+    console.log("Learner store loaded:", store.value);
   } catch (error: any) {
     apiError.value = error.message;
-    console.error("Failed to load learnerStore:", error);
+    console.error("Failed to load learner store:", error);
   } finally {
     loading.value = false;
   }
@@ -146,25 +114,20 @@ async function save() {
   apiError.value = null;
   saved.value = null;
   try {
-    const changed = Object.fromEntries(dirtyKeys.value.map((key) => [key, draft.value[key] as LearnerStoreValue]));
+    const changed: LearnerStore = {};
+    for (const key of dirtyKeys.value) {
+      const parsed = parse(draft.value[key] ?? "");
+      if (parsed.ok) changed[key] = parsed.value;
+    }
     saved.value = await pathInstance.updateLearnerStore(changed);
     console.log("Learner store saved:", saved.value);
     await loadLearnerStore();
   } catch (error: any) {
     apiError.value = error.message;
-    console.error("Failed to save learnerStore:", error);
+    console.error("Failed to save learner store:", error);
   } finally {
     saving.value = false;
   }
-}
-
-function addItem(field: LearnerStoreField) {
-  const items = draft.value[field.key] as LearnerStoreObjectValue[];
-  items.push(Object.fromEntries((field.fields ?? []).map((subField) => [subField.key, subField.defaultValue ?? ""])));
-}
-
-function removeItem(field: LearnerStoreField, index: number) {
-  (draft.value[field.key] as LearnerStoreObjectValue[]).splice(index, 1);
 }
 
 defineExpose({ loadLearnerStore });

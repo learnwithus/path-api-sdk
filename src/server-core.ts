@@ -4,12 +4,8 @@ import type {
   Progress,
   SubmitProgressInput,
   LearnerStore,
-  LearnerStoreField,
-  LearnerStoreUpdate,
-  LearnerStoreValue,
 } from "./types.js";
 import { toSubmitBody } from "./submit-payload.js";
-import { toLearnerStore, toLearnerStoreUpdate } from "./learner-store.js";
 
 export interface ServerSDKConfig {
   /**
@@ -120,31 +116,20 @@ export function createServerSDK(
       });
     },
 
-    /**
-     * Get the learner store, keyed by field key. Each entry carries the field definition and
-     * the learner's current value.
-     */
+    /** Get the learner's stored values, keyed by field key. */
     getLearnerStore: async (): Promise<LearnerStore> => {
-      const fields = await serverFetch<LearnerStoreField[]>(
-        `${pathUrl}/api/learner/store?courseId=${courseId}`,
-        token,
-        onTokenRefresh,
-      );
-      return toLearnerStore(fields);
+      return serverFetch<LearnerStore>(`${pathUrl}/api/learner/store?courseId=${courseId}`, token, onTokenRefresh);
     },
 
     /**
-     * Write learner store values. Only the keys you pass are changed. Returns the stored values, keyed
-     * the same way you sent them.
+     * Write learner store values. Only the keys you pass are changed. Returns just those values,
+     * keyed the same way, as Path stored them.
      */
-    updateLearnerStore: async (values: LearnerStoreUpdate): Promise<LearnerStoreUpdate> => {
-      const written = await serverFetch<Array<{ key: string; value: LearnerStoreValue }>>(
-        `${pathUrl}/api/learner/store?courseId=${courseId}`,
-        token,
-        onTokenRefresh,
-        { method: "POST", body: { values } },
-      );
-      return toLearnerStoreUpdate(written);
+    updateLearnerStore: async (values: LearnerStore): Promise<LearnerStore> => {
+      return serverFetch<LearnerStore>(`${pathUrl}/api/learner/store?courseId=${courseId}`, token, onTokenRefresh, {
+        method: "POST",
+        body: { values },
+      });
     },
   };
 }

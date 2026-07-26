@@ -51,8 +51,7 @@ dev/
     ├── AuthStatus.vue           # Authentication status display
     ├── ProgressDisplay.vue      # Enrollment & progress viewer
     ├── ProgressSubmit.vue       # Progress submission form
-    ├── LearnerStoreEditor.vue       # LearnerStore viewer & editor
-    └── LearnerStoreScalarInput.vue  # One input for a scalar field
+    └── LearnerStoreEditor.vue   # Learner store viewer & editor
 ```
 
 ## Components
@@ -118,22 +117,18 @@ Form for submitting progress to milestones.
 
 ### LearnerStoreEditor.vue
 
-Reads and writes the learner's learner store, exercising `getLearnerStore()` and `updateLearnerStore()`.
+Reads and writes the learner store, exercising `getLearnerStore()` and `updateLearnerStore()`.
 
 **Features:**
 
-- One input per field type, including `object` sub-fields and add/remove for `repeatable` items
-- Tracks which fields changed and sends only those, matching how `updateLearnerStore` is meant to be used
+- One JSON textarea per key. The learner API returns values without definitions, so there is no
+  field type to pick a typed control from — this is exactly what an SDK consumer sees
+- Infers a shape hint per key (`string`, `object`, `array(3)`, …) from the value itself
+- Tracks which keys changed and sends only those, so partial writes are exercised rather than assumed
 - Shows the dirty count on the Save button, and a Discard button to reset the draft
-- Prints the server's stored values after a save, so you can see what Path normalized
-- Full learner store JSON in a collapsible panel
+- Blocks saving while any value is invalid JSON, and says which one
+- Prints what the server stored after a save, so normalization is visible
 - Reloads when the course ID changes
-
-### LearnerStoreScalarInput.vue
-
-One input for a single scalar field, used both for root-level fields and for sub-fields inside
-`object` and `repeatable` groups. Picks the control from `fieldType` — select, multi-select,
-checkbox, number, textarea, or text — and renders `select`/`multiselect` choices from `options`.
 
 ## Configuration
 

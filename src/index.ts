@@ -5,17 +5,12 @@ import type {
   SubmitProgressInput,
   Progress,
   LearnerStore,
-  LearnerStoreField,
-  LearnerStoreUpdate,
-  LearnerStoreValue,
 } from "./types.js";
 import { apiRequest, setToken, getToken } from "./fetch-helper.js";
 import { toSubmitBody } from "./submit-payload.js";
-import { toLearnerStore, toLearnerStoreUpdate } from "./learner-store.js";
 
 export * from "./types.js";
 export { apiRequest, setToken, getToken } from "./fetch-helper.js";
-export { toLearnerStore, toLearnerStoreUpdate } from "./learner-store.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
 
 /**
@@ -150,27 +145,26 @@ export function pathSDK(config: LearnerAPIConfig) {
     },
 
     /**
-     * Get the learner store: every field the course defined, keyed by field key, each with the
-     * learner's current value (or the field's default if they have not written one).
+     * Get the learner's stored values, keyed by field key. A field the learner has never written
+     * comes back with the default staff configured for it.
      *
      * @example
      * ```ts
-     * const learnerStore = await path.getLearnerStore();
+     * const store = await path.getLearnerStore();
      *
-     * learnerStore.notes.value;          // "ask about the pre-op class"
-     * learnerStore.notes.label;          // "My notes"
-     * learnerStore.bookmarks.fieldType;  // "repeatable"
+     * store.notes;      // "ask about the pre-op class"
+     * store.bookmarks;  // [{ title: "Nutrition guide", url: "https://…" }]
      * ```
      */
     getLearnerStore: async (): Promise<LearnerStore> => {
-      const fields = await apiRequest<LearnerStoreField[]>(`${pathUrl}/api/learner/store?courseId=${courseId}`);
-      return toLearnerStore(fields);
+      return await apiRequest<LearnerStore>(`${pathUrl}/api/learner/store?courseId=${courseId}`);
     },
 
     /**
-     * Write learner store values. Only the keys you pass are changed; the rest of the learner store is left
-     * alone. Returns the stored values, keyed the same way you sent them — the server may normalize
-     * what you wrote, so prefer the returned values over the ones you sent.
+     * Write learner store values. Only the keys you pass are changed; the rest is left alone.
+     *
+     * Returns just the values written, keyed the same way — and Path normalizes what it stores, so
+     * prefer these over the ones you sent.
      *
      * @example
      * ```ts
@@ -186,12 +180,11 @@ export function pathSDK(config: LearnerAPIConfig) {
      * });
      * ```
      */
-    updateLearnerStore: async (values: LearnerStoreUpdate): Promise<LearnerStoreUpdate> => {
-      const written = await apiRequest<Array<{ key: string; value: LearnerStoreValue }>>(
-        `${pathUrl}/api/learner/store?courseId=${courseId}`,
-        { method: "POST", body: { values } },
-      );
-      return toLearnerStoreUpdate(written);
+    updateLearnerStore: async (values: LearnerStore): Promise<LearnerStore> => {
+      return await apiRequest<LearnerStore>(`${pathUrl}/api/learner/store?courseId=${courseId}`, {
+        method: "POST",
+        body: { values },
+      });
     },
   };
 }

@@ -122,24 +122,22 @@ Returns the created `Progress` record (including its stored `value` and `complet
 
 #### `path.getLearnerStore()`
 
-Get the learner's learner store: every field the course defined, keyed by field **key** (not slug — slug
-identifies a milestone). Each entry carries the field definition and the learner's current value, or
-the field's default if they have never written one.
+Get the learner's stored values, keyed by field **key** (not slug — slug identifies a milestone).
+Values only: your course site configured these fields with staff, so it already knows the labels and
+types.
 
 ```typescript
-const learnerStore = await path.getLearnerStore();
+const store = await path.getLearnerStore();
 
-learnerStore.notes.value; // "ask about the pre-op class"
-learnerStore.notes.label; // "My notes"
-learnerStore.bookmarks.fieldType; // "repeatable"
-learnerStore.bookmarks.fields; // sub-field definitions
+store.notes; // "ask about the pre-op class"
+store.bookmarks; // [{ title: "Nutrition guide", url: "https://…" }]
 ```
+
+A field the learner has never written comes back with the default staff configured for it, so every
+field the course defines has an entry.
 
 Key order matches the order staff configured. The exception is an all-digit field key, which
 JavaScript hoists to the front of an object.
-
-`updatedAt` is when the value was last written, or `null` if never. `updatedByName` is always `null`
-on the learner API — Path hides the writer's name when a learner reads their own record.
 
 #### `path.updateLearnerStore(values)`
 
@@ -184,29 +182,23 @@ import type {
   SubmitProgressPayload,
   MilestoneType,
   MilestoneValue,
-  // LearnerStore
+  // Learner store
   LearnerStore,
-  LearnerStoreField,
-  LearnerStoreSubField,
-  LearnerStoreFieldType,
-  LearnerStoreScalarType,
   LearnerStoreScalarValue,
   LearnerStoreObjectValue,
   LearnerStoreValue,
-  LearnerStoreUpdate,
 } from "@vch-lt/path";
 ```
 
-`LearnerStoreValue` is a union covering every field shape — a scalar, one object, or a list of objects.
-Narrow it with the field's `fieldType`:
+`LearnerStore` is `Record<string, LearnerStoreValue>` — the same type a read returns and a write
+accepts, so values round-trip.
+
+`LearnerStoreValue` is a union covering every field shape: a scalar, one object, or a list of
+objects. The API doesn't tell you which applies, so narrow using what you know about the field:
 
 ```typescript
-const field = learnerStore.bookmarks;
-
-if (field.fieldType === "repeatable") {
-  const items = field.value as LearnerStoreObjectValue[];
-  items.forEach((item) => console.log(item.title));
-}
+const bookmarks = store.bookmarks as LearnerStoreObjectValue[];
+bookmarks.forEach((item) => console.log(item.title));
 ```
 
 ## Examples

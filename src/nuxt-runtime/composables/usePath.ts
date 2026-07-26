@@ -1,7 +1,7 @@
 import { useAsyncData, useRequestEvent, useRuntimeConfig } from "#app";
 import pathSDK, { getProgress as _getProgress } from "@vch-lt/path";
 import { pathNuxtSDK as _pathNuxtSDK } from "@vch-lt/path/nuxt";
-import type { SubmitProgressInput, Enrollment, LearnerStoreUpdate } from "@vch-lt/path";
+import type { SubmitProgressInput, Enrollment, LearnerStore } from "@vch-lt/path";
 
 function _config() {
   // runtimeConfig.public is available on both server and client
@@ -63,7 +63,7 @@ export const usePath = () => ({
    * await refresh();
    * ```
    */
-  updateLearnerStore: async (values: LearnerStoreUpdate) =>
+  updateLearnerStore: async (values: LearnerStore) =>
     import.meta.server ? (await _serverSDK()).updateLearnerStore(values) : _clientSDK().updateLearnerStore(values),
 
   /** Redirect to the Path login page. Client-only. */

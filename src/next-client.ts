@@ -10,7 +10,6 @@ import type {
   Progress,
   SubmitProgressInput,
   LearnerStore,
-  LearnerStoreUpdate,
 } from "./types.js";
 
 export type {
@@ -22,14 +21,9 @@ export type {
   SubmitProgressInput,
   SubmitProgressPayload,
   LearnerStore,
-  LearnerStoreField,
-  LearnerStoreSubField,
-  LearnerStoreFieldType,
-  LearnerStoreScalarType,
   LearnerStoreScalarValue,
   LearnerStoreObjectValue,
   LearnerStoreValue,
-  LearnerStoreUpdate,
 } from "./types.js";
 export type { Progress, User, Course, Milestone } from "./types.js";
 
@@ -170,7 +164,7 @@ export interface UseLearnerStoreResult {
   /** The error from the last load or save, if one failed. */
   error: Error | null;
   /** Write values and merge the result into local state. Only the keys you pass are changed. */
-  update: (values: LearnerStoreUpdate) => Promise<void>;
+  update: (values: LearnerStore) => Promise<void>;
   /** Re-read the learner store from Path. */
   refresh: () => Promise<void>;
 }
@@ -195,7 +189,7 @@ export interface UseLearnerStoreResult {
  *
  *   return (
  *     <textarea
- *       defaultValue={String(learnerStore?.notes?.value ?? "")}
+ *       defaultValue={String(learnerStore?.notes ?? "")}
  *       onBlur={(e) => update({ notes: e.target.value })}
  *     />
  *   );
@@ -247,22 +241,14 @@ export function useLearnerStore(config?: Partial<LearnerAPIConfig>): UseLearnerS
   }, [sdk]);
 
   /**
-   * Merges the server's stored values rather than the ones passed in, since the server normalizes
-   * what it writes. `updatedAt` is left as-is; call `refresh()` if you need the new timestamp.
+   * Merges the values the server stored rather than the ones passed in, since Path normalizes what
+   * it writes.
    */
   const update = useCallback(
-    async (values: LearnerStoreUpdate) => {
+    async (values: LearnerStore) => {
       try {
         const written = await sdk.updateLearnerStore(values);
-        setLearnerStore((previous) => {
-          if (!previous) return previous;
-          const next: LearnerStore = { ...previous };
-          for (const [key, value] of Object.entries(written)) {
-            const field = next[key];
-            if (field) next[key] = { ...field, value };
-          }
-          return next;
-        });
+        setLearnerStore((previous) => ({ ...previous, ...written }));
         setError(null);
       } catch (caught) {
         const asError = caught instanceof Error ? caught : new Error(String(caught));

@@ -143,15 +143,17 @@ deliberately *not* for anything in the natural progression of learning. Use mile
 `submitProgress` for that: milestones record how far a learner has got, the learner store holds what
 they jotted down along the way.
 
-```ts
-const learnerStore = await path.getLearnerStore();
+The API returns **values only**, keyed by field key. Your site set these fields up with staff, so it
+already knows the labels and types — it just needs the data.
 
-learnerStore.notes.value; // "ask about the pre-op class"
-learnerStore.notes.label; // "My notes" — the label staff configured
+```ts
+const store = await path.getLearnerStore();
+
+store.notes; // "ask about the pre-op class"
 ```
 
-The learner store is **keyed by field key**, so reads look like writes. A key is lowercase and
-kebab-case, for example `saved-bookmarks`. (Milestones use `slug`; learner store fields use `key`.)
+Keys are lowercase and kebab-case, for example `saved-bookmarks`. (Milestones use `slug`; learner
+store fields use `key`.)
 
 Write with `updateLearnerStore`. Only the keys you pass are changed — everything else is left alone,
 so you can save one field without sending the whole store back:
@@ -160,31 +162,29 @@ so you can save one field without sending the whole store back:
 await path.updateLearnerStore({ notes: "ask about the pre-op class" });
 ```
 
-It returns the stored values, keyed the same way. Prefer those over the ones you sent, because Path
-normalizes what it writes:
+A write returns just the keys it wrote, in the same shape a read returns. Prefer those values over
+the ones you sent, because Path normalizes what it stores:
 
 ```ts
 const stored = await path.updateLearnerStore({ "favourite-number": "7" });
 stored["favourite-number"]; // 7 — a number, not the string you sent
 ```
 
-#### Field types
+#### Value shapes
 
-Each field has a `fieldType` that tells you the shape of its `value`:
+A field's value shape follows the type staff gave it. You won't be told the type at runtime, so
+treat these as the contract you agreed when the fields were set up:
 
-| `fieldType`   | `value` is                | Notes                                          |
-| ------------- | ------------------------- | ---------------------------------------------- |
-| `text`        | `string`                  |                                                |
-| `textarea`    | `string`                  | Multi-line                                     |
-| `number`      | `number`                  |                                                |
-| `checkbox`    | `boolean`                 |                                                |
-| `select`      | `string`                  | One of `field.options`                         |
-| `multiselect` | `string[]`                | Several of `field.options`                     |
-| `object`      | `{ [subKey]: value }`     | One group of sub-fields; see `field.fields`    |
-| `repeatable`  | `Array<{ [subKey]: … }>`  | A list of such groups the learner can add to   |
+| Field type                   | Value                                    |
+| ---------------------------- | ---------------------------------------- |
+| `text`, `textarea`, `select` | `string`                                 |
+| `number`                     | `number`                                 |
+| `checkbox`                   | `boolean`                                |
+| `multiselect`                | `string[]`                               |
+| `object`                     | `{ [subKey]: scalar }`                   |
+| `repeatable`                 | `Array<{ [subKey]: scalar }>`            |
 
-`object` and `repeatable` fields describe their sub-fields in `field.fields`. Sub-fields are always
-scalar — the nesting is one level deep.
+Sub-fields inside `object` and `repeatable` are always scalar — the nesting is one level deep.
 
 ```ts
 // object — send every sub-field you want set
@@ -199,25 +199,22 @@ await path.updateLearnerStore({
 });
 ```
 
-#### Rendering fields in order
+A field the learner has never written comes back with the default staff configured for it, so a read
+always has an entry for every field the course defines.
 
-`getLearnerStore()` preserves the order staff configured, because Path returns the fields sorted and
-JavaScript keeps object keys in insertion order:
+#### Iterating the whole store
+
+Key order follows the order staff configured, because Path returns the fields sorted and JavaScript
+keeps object keys in insertion order:
 
 ```ts
-for (const field of Object.values(learner store)) {
-  render(field.label, field.value);
+for (const [key, value] of Object.entries(store)) {
+  console.log(key, value);
 }
 ```
 
 The one exception is a field key made only of digits (`"123"`), which JavaScript hoists to the front
 of an object. If a course uses keys like that, don't rely on `Object.keys()` order for display.
-
-#### Who wrote a value
-
-`field.updatedAt` is the time the value was last written, or `null` if the learner has never written
-it. `field.updatedByName` is **always `null` here**: Path hides the writer's name whenever a learner
-reads their own record, so a learner never sees that a staff member edited a value.
 
 ---
 
@@ -398,7 +395,7 @@ export function Notes() {
 
   return (
     <textarea
-      defaultValue={String(learnerStore?.notes?.value ?? "")}
+      defaultValue={String(learnerStore?.notes ?? "")}
       onBlur={(event) => update({ notes: event.target.value })}
     />
   );
@@ -406,7 +403,6 @@ export function Notes() {
 ```
 
 `update()` merges the stored values into local state, so the UI reflects what Path actually saved.
-It leaves `updatedAt` alone — call `refresh()` if you need the new timestamp.
 
 | Returned      | Type                                    | Description                                        |
 | ------------- | --------------------------------------- | -------------------------------------------------- |
@@ -504,7 +500,7 @@ const complete = async () => {
 | `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise`               | Record progress; completion booleans set state, other bare values are data. |
 | `getProgress(enrollment, slug)` | `Progress \| undefined` | Look up a record by slug. Read its `.complete` flag for completeness, not `.value`. |
 | `getLearnerStore()`               | `AsyncData<LearnerStore>`   | The learner's learner store, keyed by field key. SSR-safe. |
-| `updateLearnerStore(values)`      | `Promise<LearnerStoreUpdate>` | Write learner store values. Only the keys you pass change. |
+| `updateLearnerStore(values)`      | `Promise<LearnerStore>` | Write learner store values. Only the keys you pass change. |
 | `login(callbackUrl?)`         | `void`                  | Redirect to Path login. Client-only.            |
 | `logout()`                    | `Promise`               | Clear session and log out. Client-only.         |
 
@@ -521,7 +517,7 @@ the client. It caches under the `path-learner store` key, so refresh it after wr
 <script setup lang="ts">
 const { data: learner store, refresh } = await usePath().getLearnerStore();
 
-const notes = ref(String(learnerStore.value?.notes?.value ?? ""));
+const notes = ref(String(learnerStore.value?.notes ?? ""));
 
 async function save() {
   await usePath().updateLearnerStore({ notes: notes.value });
