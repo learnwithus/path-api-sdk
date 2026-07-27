@@ -45,7 +45,11 @@ interface PathContextValue {
   refreshAuth: () => Promise<void>;
 }
 
-const PathContext = createContext<PathContextValue | null>(null);
+interface InternalPathContextValue extends PathContextValue {
+  sdk: ReturnType<typeof pathSDK>;
+}
+
+const PathContext = createContext<InternalPathContextValue | null>(null);
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -125,8 +129,9 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
     [auth],
   );
 
-  const value = useMemo<PathContextValue>(
+  const value = useMemo<InternalPathContextValue>(
     () => ({
+      sdk,
       auth,
       isLoading,
       getProgress,
@@ -135,7 +140,7 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
       logout,
       refreshAuth,
     }),
-    [auth, isLoading, getProgress, submitProgress, sdk.login, logout, refreshAuth],
+    [sdk, auth, isLoading, getProgress, submitProgress, logout, refreshAuth],
   );
 
   return createElement(PathContext.Provider, { value }, children);
@@ -197,14 +202,19 @@ export interface UseLearnerStoreResult {
  * ```
  */
 export function useLearnerStore(config?: Partial<LearnerAPIConfig>): UseLearnerStoreResult {
+  const ctx = useContext(PathContext);
+  if (!ctx) {
+    throw new Error("useLearnerStore() must be used within a <PathProvider>");
+  }
+
   const sdkRef = useRef<ReturnType<typeof pathSDK> | null>(null);
-  if (sdkRef.current === null) {
+  if (config && sdkRef.current === null) {
     sdkRef.current = pathSDK({
       courseUrl: typeof window !== "undefined" ? window.location.origin : "",
       ...config,
     } as LearnerAPIConfig);
   }
-  const sdk = sdkRef.current;
+  const sdk = sdkRef.current ?? ctx.sdk;
 
   const [learnerStore, setLearnerStore] = useState<LearnerStore | null>(null);
   const [isLoading, setIsLoading] = useState(true);

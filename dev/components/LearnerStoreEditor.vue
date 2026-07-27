@@ -119,9 +119,10 @@ async function save() {
       const parsed = parse(draft.value[key] ?? "");
       if (parsed.ok) changed[key] = parsed.value;
     }
-    saved.value = await pathInstance.updateLearnerStore(changed);
-    console.log("Learner store saved:", saved.value);
+    const savedResponse = await pathInstance.updateLearnerStore(changed);
+    console.log("Learner store saved:", savedResponse);
     await loadLearnerStore();
+    saved.value = savedResponse;
   } catch (error: any) {
     apiError.value = error.message;
     console.error("Failed to save learner store:", error);
