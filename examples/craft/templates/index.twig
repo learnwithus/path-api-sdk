@@ -1,0 +1,21 @@
+{% set state = craft.path.getLearnerState() %}
+
+{% if not state.user %}
+  {% redirect craft.path.getLoginUrl(craft.app.request.absoluteUrl) %}
+{% endif %}
+
+<h1>{{ state.course.title }}</h1>
+<p>Welcome, {{ state.user.firstName ?? state.user.name ?? state.user.email }}</p>
+
+<ul>
+  {% for milestone in state.milestones %}
+    {% set record = craft.path.getProgress(milestone.slug) %}
+    <li>{{ milestone.title }}: {{ record and record.complete ? 'complete' : 'not complete' }}</li>
+  {% endfor %}
+</ul>
+
+<form method="post" action="">
+  {{ csrfInput() }}
+  {{ actionInput('path/path/logout') }}
+  <button type="submit">Log out</button>
+</form>
