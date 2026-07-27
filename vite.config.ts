@@ -7,11 +7,11 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, "src/index.ts"),
-        "next-server": resolve(__dirname, "src/next-server.ts"),
-        "next-client": resolve(__dirname, "src/next-client.ts"),
-        server: resolve(__dirname, "src/server.ts"),
-        nuxt: resolve(__dirname, "src/nuxt.ts"),
+        index: resolve(__dirname, "src/typescript/index.ts"),
+        "next-server": resolve(__dirname, "src/typescript/next-server.ts"),
+        "next-client": resolve(__dirname, "src/typescript/next-client.ts"),
+        server: resolve(__dirname, "src/typescript/server.ts"),
+        nuxt: resolve(__dirname, "src/typescript/nuxt.ts"),
       },
       formats: ["es"],
       fileName: (_format, entryName) => `${entryName}.js`,
@@ -29,7 +29,7 @@ export default defineConfig({
   // Resolve configuration
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
+      "@": resolve(__dirname, "src/typescript"),
     },
   },
 
@@ -37,4 +37,5 @@ export default defineConfig({
   server: {
     port: 5500,
   },
+  root: resolve(__dirname, "examples/typescript"),
 });

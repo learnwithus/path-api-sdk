@@ -1,0 +1,35 @@
+{
+  "name": "vch-lt/path",
+  "description": "PHP SDK and Craft CMS adapter for Path patient tracking software",
+  "type": "library",
+  "license": "ISC",
+  "require": {
+    "php": "^8.1",
+    "guzzlehttp/guzzle": "^7.0",
+    "guzzlehttp/psr7": "^2.5",
+    "psr/http-client": "^1.0",
+    "psr/http-message": "^1.0 || ^2.0"
+  },
+  "suggest": {
+    "craftcms/cms": "^4.0 || ^5.0 for the Craft CMS module"
+  },
+  "autoload": {
+    "psr-4": {
+      "VchLt\\Path\\": "src/php/"
+    }
+  },
+  "archive": {
+    "exclude": [
+      "/.claude",
+      "/.DS_Store",
+      "/.env",
+      "/dist",
+      "/node_modules",
+      "/vendor"
+    ]
+  },
+  "support": {
+    "issues": "https://github.com/learnwithus/path-api-sdk/issues",
+    "source": "https://github.com/learnwithus/path-api-sdk"
+  }
+}

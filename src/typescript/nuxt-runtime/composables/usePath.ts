@@ -1,0 +1,82 @@
+import { useAsyncData, useRequestEvent, useRuntimeConfig } from "#app";
+import pathSDK, { getProgress as _getProgress } from "@vch-lt/path";
+import { pathNuxtSDK as _pathNuxtSDK } from "@vch-lt/path/nuxt";
+import type { SubmitProgressInput, LearnerState, LearnerStore } from "@vch-lt/path";
+
+function _config() {
+  // runtimeConfig.public is available on both server and client
+  const { pathSDK: cfg } = useRuntimeConfig().public as { pathSDK: { courseId: string; pathUrl: string } };
+  return cfg;
+}
+
+function _serverSDK() {
+  const cfg = _config();
+  return _pathNuxtSDK(useRequestEvent(), cfg);
+}
+
+function _clientSDK() {
+  const cfg = _config();
+  return pathSDK({ ...cfg, courseUrl: window.location.origin });
+}
+
+/**
+ * Universal Path composable. Works in pages, components, and layouts on both server and client.
+ * Data-fetching methods use useAsyncData — fetched on the server during SSR, reused on the client
+ * without a second network request.
+ *
+ * @example
+ * const { data: user } = await usePath().checkAuth();
+ * if (!user.value) usePath().login(window.location.href);
+ */
+export const usePath = () => ({
+  /** Return the authenticated user or null. SSR-safe—the result is shared across hydration. */
+  checkAuth: () =>
+    useAsyncData("path-auth", async () =>
+      import.meta.server ? (await _serverSDK()).checkAuth() : _clientSDK().checkAuth(),
+    ),
+
+  /** Get the complete learner state. SSR-safe. */
+  getLearnerState: () =>
+    useAsyncData("path-learner-state", async () =>
+      import.meta.server ? (await _serverSDK()).getLearnerState() : _clientSDK().getLearnerState(),
+    ),
+
+  /** Submit a milestone progress value, or a `{ data, complete }` payload. Works on server and client. */
+  submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) =>
+    import.meta.server
+      ? (await _serverSDK()).submitProgress(milestoneSlug, valueOrPayload)
+      : _clientSDK().submitProgress(milestoneSlug, valueOrPayload),
+
+  /** Get the learner store, keyed by field key. SSR-safe. */
+  getLearnerStore: () =>
+    useAsyncData("path-learner-store", async () =>
+      import.meta.server ? (await _serverSDK()).getLearnerStore() : _clientSDK().getLearnerStore(),
+    ),
+
+  /**
+   * Write learner store values. Only the keys you pass are changed. Works on server and client.
+   *
+   * `getLearnerStore()` caches under the `path-learner-store` key, so refresh it after writing:
+   * ```ts
+   * const { data: learnerStore, refresh } = await usePath().getLearnerStore();
+   * await usePath().updateLearnerStore({ notes: "ask about the pre-op class" });
+   * await refresh();
+   * ```
+   */
+  updateLearnerStore: async (values: LearnerStore) =>
+    import.meta.server ? (await _serverSDK()).updateLearnerStore(values) : _clientSDK().updateLearnerStore(values),
+
+  /** Redirect to the Path login page. Client-only. */
+  login: (callbackUrl?: string) => {
+    if (import.meta.client) _clientSDK().login(callbackUrl);
+  },
+
+  /** Clear the session and log out. Works on server and client. */
+  logout: async () => {
+    if (import.meta.server) await (await _serverSDK()).logout();
+    else await _clientSDK().logout();
+  },
+
+  /** Look up a progress record by milestone slug. */
+  getProgress: (state: LearnerState, milestoneSlug: string) => _getProgress(state, milestoneSlug),
+});
