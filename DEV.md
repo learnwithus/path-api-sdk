@@ -49,7 +49,7 @@ dev/
 ├── styles.css                   # Global styles
 └── components/
     ├── AuthStatus.vue           # Authentication status display
-    ├── ProgressDisplay.vue      # Enrollment & progress viewer
+    ├── ProgressDisplay.vue      # Learner state viewer
     ├── ProgressSubmit.vue       # Progress submission form
     └── LearnerStoreEditor.vue   # Learner store viewer & editor
 ```
@@ -78,7 +78,7 @@ Displays authentication status and provides login/logout actions.
 **States:**
 
 - Loading: "Checking authentication..."
-- Authenticated: Shows user ID, email, and enrolled course
+- Authenticated: Shows user ID, email, and read-only learner attributes
 - Not Authenticated: Shows "Not logged in" with login button
 - Error: Displays error message
 
@@ -145,7 +145,7 @@ TypeScript is configured to:
 
 - Support `.vue` files via `dev/vue-shim.d.ts`
 - Provide full type safety throughout the app
-- Import types from the SDK (`PathSDKInstance`, `Enrollment`, etc.)
+- Import types from the SDK (`PathSDKInstance`, `LearnerState`, etc.)
 
 ## Testing Workflow
 
@@ -153,7 +153,7 @@ TypeScript is configured to:
 2. **Set course ID**: Enter a course ID in the input field
 3. **Check authentication**: See if you're logged in for that course
 4. **Login if needed**: Click login button to authenticate
-5. **View progress**: See enrollment and progress data
+5. **View progress**: See the flattened learner state and progress data
 6. **Submit progress**: Test submitting new progress values
 7. **Change course**: Update course ID to test with different courses
 

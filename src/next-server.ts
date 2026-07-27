@@ -8,8 +8,10 @@ import { PathProviderClient } from "./next-client.js";
 
 export type { ServerSDKInstance };
 export type {
-  Enrollment,
-  AuthStatus,
+  AuthenticatedUser,
+  LearnerState,
+  LearnerAttributes,
+  LearnerAttributeValue,
   Progress,
   Milestone,
   MilestoneType,
@@ -90,13 +92,13 @@ export function createPathMiddleware() {
  *
  * export default async function CoursePage() {
  *   const path = await pathServerSDK({ courseId: 'your-course-id' });
- *   const auth = await path.checkAuth();
+ *   const user = await path.checkAuth();
  *
- *   if (!auth.isAuthenticated) {
+ *   if (!user) {
  *     redirect('/login');
  *   }
  *
- *   return <div>Welcome, {auth.enrollment?.user.email}</div>;
+ *   return <div>Welcome, {user.email}</div>;
  * }
  * ```
  */
@@ -127,8 +129,8 @@ export async function pathServerSDK(config: ServerSDKConfig) {
      * @example
      * ```ts
      * const path = await pathServerSDK({ courseId: 'your-course-id', courseUrl: 'https://your-site.com' });
-     * const auth = await path.checkAuth();
-     * if (!auth.isAuthenticated) await path.login();
+     * const user = await path.checkAuth();
+     * if (!user) await path.login();
      * ```
      */
     login: async (callbackUrl?: string): Promise<never> => {
@@ -169,14 +171,14 @@ export interface PathProviderProps {
   /** Course URL. Falls back to NEXT_PUBLIC_PATH_COURSE_URL env var. */
   courseUrl?: string;
   /**
-   * Fetch auth on the server and hydrate the client (default: true).
+   * Fetch learner state on the server and hydrate the client (default: true).
    * Set to false to skip — the client will fetch on mount instead.
    */
-  initialAuth?: boolean;
+  prefetch?: boolean;
 }
 
 /**
- * Async Server Component that fetches auth and provides reactive state to the tree.
+ * Async Server Component that fetches learner state and provides it reactively to the tree.
  * Place this in your root layout — all nested Client Components can use `usePath()`.
  *
  * @example
@@ -195,11 +197,11 @@ export interface PathProviderProps {
  * }
  * ```
  */
-export async function PathProvider({ children, initialAuth: enableInitialAuth = true, ...config }: PathProviderProps) {
-  let auth;
-  if (enableInitialAuth) {
+export async function PathProvider({ children, prefetch = true, ...config }: PathProviderProps) {
+  let initialState;
+  if (prefetch) {
     const sdk = await pathServerSDK(config);
-    auth = await sdk.checkAuth();
+    initialState = await sdk.getLearnerState();
   }
-  return createElement(PathProviderClient, { initialAuth: auth, config }, children);
+  return createElement(PathProviderClient, { initialState, config }, children);
 }

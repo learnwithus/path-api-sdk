@@ -49,22 +49,23 @@ export interface Progress {
   updatedAt: string;
 }
 
-/**
- * Enrollment information with user, course, milestones, and progress
- */
-export interface Enrollment {
-  user: User;
-  course: Course;
+/** One read-only learner attribute value. Attributes are scoped to the configured course. */
+export type LearnerAttributeValue = string | number | boolean | string[] | null;
+
+/** The signed-in learner's read-only course attributes, keyed by definition key. */
+export type LearnerAttributes = Readonly<Record<string, LearnerAttributeValue>>;
+
+/** An authenticated learner profile with its attributes for the configured course. */
+export type AuthenticatedUser = User & {
+  attributes: LearnerAttributes;
+};
+
+/** The complete learner state returned by Path. */
+export interface LearnerState {
+  user: AuthenticatedUser | null;
+  course: Course | null;
   milestones: Milestone[];
   progress: Progress[];
-}
-
-/**
- * Authentication status
- */
-export interface AuthStatus {
-  isAuthenticated: boolean;
-  enrollment?: Enrollment;
 }
 
 /**

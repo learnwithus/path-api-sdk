@@ -2,7 +2,7 @@
 
 TypeScript SDK for integrating custom course websites with the Path LMS (VCH).
 
-Handles authentication, enrollment data, and progress tracking. Works client-side (any framework) and server-side (Next.js App Router, Nuxt, Express, etc.).
+Handles authentication, learner attributes, course data, and progress tracking. Works client-side (any framework) and server-side (Next.js App Router, Nuxt, Express, etc.).
 
 ---
 
@@ -52,16 +52,16 @@ const path = pathSDK({ courseId: "...", courseUrl: "..." });
 ### Check authentication
 
 ```ts
-const auth = await path.checkAuth();
+const user = await path.checkAuth();
 
-if (!auth.isAuthenticated) {
+if (!user) {
   // Pass the current URL so the user returns to the right page after login
   path.login(window.location.href);
   return;
 }
 
-console.log(auth.enrollment?.user.email);
-console.log(auth.enrollment?.progress);
+console.log(user.email);
+console.log(user.attributes);
 ```
 
 ### Submit progress
@@ -115,11 +115,12 @@ unknown `complete` request field.
 The boolean shorthand for `completion` milestones also requires a Path API version that supports
 it. Until that backend change is deployed, use `{ complete: false }` to mark one incomplete.
 
-### Get enrollment and progress
+### Get learner state
 
 ```ts
-const enrollment = await path.getEnrollmentAndProgress();
-console.log(enrollment.progress);
+const state = await path.getLearnerState();
+console.log(state.user?.attributes);
+console.log(state.progress);
 ```
 
 Each `progress` record exposes completeness on its `complete` boolean — read that to tell whether a
@@ -307,9 +308,9 @@ export const config = {
 
 ### PathProvider (recommended: place in your layout)
 
-Add `PathProvider` to your root layout (see [Setup](#setup) above for the full layout example). It automatically fetches auth on the server and hydrates the client with reactive state. Then `usePath()` works in any nested client component.
+Add `PathProvider` to your root layout (see [Setup](#setup) above for the full layout example). It automatically fetches learner state on the server and hydrates the client with reactive state. Then `usePath()` works in any nested client component.
 
-> **Required:** Your layout must export `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes — the cookie store will always appear empty and `checkAuth()` will always return `isAuthenticated: false` without this.
+> **Required:** Your layout must export `export const dynamic = 'force-dynamic'`. Next.js intentionally disables `cookies()` in statically rendered routes—the cookie store will always appear empty and `checkAuth()` will return `null` without this.
 
 Now any client component can use `usePath()`:
 
@@ -319,8 +320,9 @@ Now any client component can use `usePath()`:
 import { usePath } from "@vch-lt/path/next";
 
 export function ProgressButton() {
-  const { auth, submitProgress } = usePath();
-  const progress = auth.enrollment?.progress ?? [];
+  const { user, progress, submitProgress } = usePath();
+
+  if (!user) return <p>Please log in.</p>;
 
   // Completeness lives on `.complete` — count that, not the number of records.
   // A record can exist (a value was saved) while still being incomplete.
@@ -346,19 +348,22 @@ When `submitProgress()` succeeds, the progress array updates reactively — ever
 | `pathUrl` | `string` | `https://path.vchlearn.ca` | Path backend URL |
 | `courseId` | `string` | `NEXT_PUBLIC_PATH_COURSE_ID` env var | Your course ID. Prefer passing explicitly in Docker — see [Setup](#setup) |
 | `courseUrl` | `string` | `NEXT_PUBLIC_PATH_COURSE_URL` env var | Your course URL. Prefer passing explicitly in Docker — see [Setup](#setup) |
-| `initialAuth` | `boolean` | `true` | Set to `false` to skip server-side fetch — the client fetches on mount instead |
+| `prefetch` | `boolean` | `true` | Set to `false` to skip server-side fetch—the client fetches on mount instead |
 
 ### `usePath()` return value
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `auth` | `AuthStatus` | Reactive auth state (updates after `submitProgress` / `logout` / `refreshAuth`) |
-| `isLoading` | `boolean` | `true` while the initial fetch is in-flight (only when no `initialAuth`) |
+| `user` | `AuthenticatedUser \| null` | Authenticated user with read-only `attributes`; `null` when logged out |
+| `course` | `Course \| null` | Configured course; `null` when logged out |
+| `milestones` | `Milestone[]` | Course milestone definitions |
+| `progress` | `Progress[]` | Learner progress records; updates after `submitProgress` |
+| `isLoading` | `boolean` | `true` while the initial fetch is in-flight (only when `prefetch` is false) |
 | `getProgress(slug)` | `Progress \| undefined` | Look up a progress record by milestone slug |
 | `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise<Progress>` | Submit progress; a completion boolean sets state, otherwise a bare value is data |
 | `login(callbackUrl?)` | `void` | Redirect to Path login |
 | `logout()` | `Promise<void>` | Log out and clear state |
-| `refreshAuth()` | `Promise<void>` | Re-fetch auth from the server |
+| `refresh()` | `Promise<void>` | Re-fetch the complete learner state |
 
 `getProgress` cross-references the `milestones` array (slug → id) with the `progress` array, so you can look up progress by slug:
 
@@ -378,7 +383,7 @@ await submitProgress("module-1", true);
 
 ### LearnerStore (`useLearnerStore()`)
 
-The learner store has its own hook rather than living on `usePath()`. `PathProvider` fetches auth for
+The learner store has its own hook rather than living on `usePath()`. `PathProvider` fetches learner state for
 every app; folding the learner store in would cost a second request whether or not you use it. Call
 `useLearnerStore()` only in the components that need it — it still needs a `<PathProvider>` above it for
 configuration.
@@ -388,7 +393,7 @@ configuration.
 import { useLearnerStore } from "@vch-lt/path/next";
 
 export function Notes() {
-  const { learner store, isLoading, error, update } = useLearnerStore();
+  const { learnerStore, isLoading, error, update } = useLearnerStore();
 
   if (isLoading) return <p>Loading…</p>;
   if (error) return <p>{error.message}</p>;
@@ -406,7 +411,7 @@ export function Notes() {
 
 | Returned      | Type                                    | Description                                        |
 | ------------- | --------------------------------------- | -------------------------------------------------- |
-| `learner store`    | `LearnerStore \| null`                      | Keyed by field key; `null` until the first load     |
+| `learnerStore` | `LearnerStore \| null` | Keyed by field key; `null` until the first load |
 | `isLoading`   | `boolean`                               | True during the initial load                        |
 | `error`       | `Error \| null`                         | From the last load or save                          |
 | `update`      | `(values) => Promise<void>`             | Write values; merges the result. Rejects on failure |
@@ -421,8 +426,8 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const path = await pathServerSDK();
-  const enrollment = await path.getEnrollmentAndProgress();
-  return NextResponse.json(enrollment);
+  const state = await path.getLearnerState();
+  return NextResponse.json(state);
 }
 ```
 
@@ -471,10 +476,10 @@ export default defineNuxtConfig({
 <script setup lang="ts">
 const path = usePath();
 
-// checkAuth() and getEnrollmentAndProgress() work on server and client
-const { data: auth } = await path.checkAuth();
+// checkAuth() and getLearnerState() work on server and client
+const { data: user } = await path.checkAuth();
 
-if (!auth.value?.isAuthenticated) {
+if (!user.value) {
   path.login(window.location.href);
 }
 </script>
@@ -495,10 +500,10 @@ const complete = async () => {
 
 | Method                        | Returns                 | Description                                     |
 | ----------------------------- | ----------------------- | ----------------------------------------------- |
-| `checkAuth()`                 | `AsyncData<AuthStatus>` | Auth status + enrollment. SSR-safe.             |
-| `getEnrollmentAndProgress()`  | `AsyncData<Enrollment>` | Full enrollment data. SSR-safe.                 |
+| `checkAuth()`                 | `AsyncData<AuthenticatedUser \| null>` | Authenticated user with read-only attributes, or `null`. SSR-safe. |
+| `getLearnerState()`           | `AsyncData<LearnerState>` | Complete flattened learner state. SSR-safe. |
 | `submitProgress(slug, value \| { data, complete } \| { complete })` | `Promise`               | Record progress; completion booleans set state, other bare values are data. |
-| `getProgress(enrollment, slug)` | `Progress \| undefined` | Look up a record by slug. Read its `.complete` flag for completeness, not `.value`. |
+| `getProgress(state, slug)` | `Progress \| undefined` | Look up a record by slug. Read its `.complete` flag for completeness, not `.value`. |
 | `getLearnerStore()`               | `AsyncData<LearnerStore>`   | The learner's learner store, keyed by field key. SSR-safe. |
 | `updateLearnerStore(values)`      | `Promise<LearnerStore>` | Write learner store values. Only the keys you pass change. |
 | `login(callbackUrl?)`         | `void`                  | Redirect to Path login. Client-only.            |
@@ -507,7 +512,7 @@ const complete = async () => {
 ### LearnerStore
 
 `getLearnerStore()` is SSR-safe like the other data-fetching methods — fetched on the server, reused on
-the client. It caches under the `path-learner store` key, so refresh it after writing:
+the client. It caches under the `path-learner-store` key, so refresh it after writing:
 
 ```vue
 <template>
@@ -515,7 +520,7 @@ the client. It caches under the `path-learner store` key, so refresh it after wr
 </template>
 
 <script setup lang="ts">
-const { data: learner store, refresh } = await usePath().getLearnerStore();
+const { data: learnerStore, refresh } = await usePath().getLearnerStore();
 
 const notes = ref(String(learnerStore.value?.notes ?? ""));
 
@@ -534,7 +539,7 @@ async function save() {
 // server/api/something.get.ts
 export default defineEventHandler(async (event) => {
   const path = await pathNuxtSDK(event);
-  return path.getEnrollmentAndProgress();
+  return path.getLearnerState();
 });
 ```
 
@@ -567,20 +572,20 @@ app.use(cookieParser());
 app.get("/progress", async (req, res) => {
   const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
   const path = pathServerSDK({ courseId: "your-course-id", token });
-  res.json(await path.getEnrollmentAndProgress());
+  res.json(await path.getLearnerState());
 });
 ```
 
 The learner store methods are on the server SDK too, with the same signatures as the browser client:
 
 ```ts
-app.get("/learner store", async (req, res) => {
+app.get("/learner-store", async (req, res) => {
   const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
   const path = pathServerSDK({ courseId: "your-course-id", token });
   res.json(await path.getLearnerStore());
 });
 
-app.post("/learner store", async (req, res) => {
+app.post("/learner-store", async (req, res) => {
   const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
   const path = pathServerSDK({ courseId: "your-course-id", token });
   res.json(await path.updateLearnerStore(req.body));
@@ -603,23 +608,23 @@ Returns an SDK instance with:
 
 | Method                                 | Description                                                                    |
 | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `checkAuth()`                          | Returns `{ isAuthenticated, enrollment? }`                                     |
+| `checkAuth()`                          | Returns the authenticated user with read-only `attributes`, or `null`           |
 | `login(callbackUrl?)`                  | Redirects to Path login. Pass `window.location.href` to return to current page |
 | `logout()`                             | Clears token and calls logout API                                              |
-| `getEnrollmentAndProgress()`           | Returns full enrollment + progress data                                        |
+| `getLearnerState()`                    | Returns `{ user, course, milestones, progress }`                                |
 | `submitProgress(milestoneSlug, value \| { data, complete } \| { complete })` | Records progress; completion booleans set state, other bare values are data     |
 | `getLearnerStore()`                        | Returns the learner's learner store as `LearnerStore`, keyed by field key               |
 | `updateLearnerStore(values)`               | Writes learner store values; only the keys you pass change. Returns what was stored  |
 
-### `getProgress(enrollment, slug)` — cross-platform utility
+### `getProgress(state, slug)` — cross-platform utility
 
-Import from `@vch-lt/path` (or `@vch-lt/path/next`). Looks up a progress record by milestone slug by cross-referencing the `milestones` and `progress` arrays on the enrollment object. Returns `Progress | undefined`.
+Import from `@vch-lt/path` (or `@vch-lt/path/next`). Looks up a progress record by milestone slug by cross-referencing the top-level `milestones` and `progress` arrays. Returns `Progress | undefined`.
 
 ```ts
 import { getProgress } from "@vch-lt/path";
 
-const enrollment = await path.getEnrollmentAndProgress();
-const module1 = getProgress(enrollment, "module-1");
+const state = await path.getLearnerState();
+const module1 = getProgress(state, "module-1");
 const isDone = module1?.complete ?? false; // read `.complete`, not `.value`
 ```
 
@@ -633,19 +638,19 @@ Import from `@vch-lt/path/next`. All config fields are optional and fall back to
 | `courseUrl` | `NEXT_PUBLIC_PATH_COURSE_URL`, `COURSE_URL`                    | Your course URL (used for login redirect) |
 | `pathUrl`   | `PATH_URL`                                                     | Path backend URL (default: `https://path.vchlearn.ca`) |
 
-Returns a Promise of a server SDK instance with `checkAuth()`, `getEnrollmentAndProgress()`, `submitProgress()`, `getLoginUrl()`, and `login()`.
+Returns a Promise of a server SDK instance with `checkAuth()`, `getLearnerState()`, `submitProgress()`, `getLoginUrl()`, and `login()`.
 
 ### `PathProvider` — Next.js async Server Component
 
-Import from `@vch-lt/path/next`. Place in your root layout — automatically fetches auth on the server and provides reactive state to all client components via `usePath()`. Accepts optional `pathUrl`, `courseId`, `courseUrl`, and `initialAuth` (boolean, default `true`) props. See the [Next.js section](#nextjs-app-router) for full usage.
+Import from `@vch-lt/path/next`. Place in your root layout—it fetches learner state on the server and provides it reactively to client components via `usePath()`. Accepts optional `pathUrl`, `courseId`, `courseUrl`, and `prefetch` (boolean, default `true`) props. See the [Next.js section](#nextjs-app-router) for full usage.
 
 ### `usePath()` — Next.js reactive client hook
 
-Import from `@vch-lt/path/next` in Client Components. Returns reactive `auth`, `isLoading`, `getProgress()`, `submitProgress()`, `login()`, `logout()`, and `refreshAuth()`. Must be used within a `<PathProvider>` tree. Read a milestone's completeness from the returned record's `.complete` flag, not its `.value`.
+Import from `@vch-lt/path/next` in Client Components. Returns reactive `user`, `course`, `milestones`, `progress`, `isLoading`, `getProgress()`, `submitProgress()`, `login()`, `logout()`, and `refresh()`. Must be used within a `<PathProvider>` tree. Read a milestone's completeness from the returned record's `.complete` flag, not its `.value`.
 
 ### `useLearnerStore(config?)` — Next.js reactive learner store hook
 
-Import from `@vch-lt/path/next` in Client Components. Returns `{ learner store, isLoading, error, update, refresh }`. Deliberately separate from `usePath()` so apps that don't use the learner store don't pay for the extra request. Needs a `<PathProvider>` above it for configuration.
+Import from `@vch-lt/path/next` in Client Components. Returns `{ learnerStore, isLoading, error, update, refresh }`. Deliberately separate from `usePath()` so apps that don't use the learner store don't pay for the extra request. Needs a `<PathProvider>` above it for configuration.
 
 ### `pathClientSDK(config)` — Next.js client-side (low-level)
 
@@ -657,7 +662,7 @@ Import from `@vch-lt/path/nuxt`. Takes an H3 event and optional config (`courseI
 
 ### `usePath()` — Nuxt universal composable (Nuxt module only)
 
-Auto-imported. Works in pages, components, and layouts on both server and client. Data-fetching methods (`checkAuth`, `getEnrollmentAndProgress`, `getLearnerStore`) return `AsyncData` (Nuxt's `useAsyncData` result) — SSR-safe with no double-fetch. Action methods (`login`, `logout`, `submitProgress`, `updateLearnerStore`) return Promises. `getProgress(enrollment, slug)` looks up a single record from an enrollment — check its `.complete` flag for completeness, not its `.value`.
+Auto-imported. Works in pages, components, and layouts on both server and client. Data-fetching methods (`checkAuth`, `getLearnerState`, `getLearnerStore`) return `AsyncData` (Nuxt's `useAsyncData` result)—SSR-safe with no double-fetch. Action methods (`login`, `logout`, `submitProgress`, `updateLearnerStore`) return Promises. `getProgress(state, slug)` looks up a single record from learner state—check its `.complete` flag for completeness, not its `.value`.
 
 ### `pathServerSDK(options)` — generic server-side
 

@@ -10,20 +10,17 @@
       <div v-if="loading">Checking authentication...</div>
 
       <!-- Authenticated State -->
-      <div v-else-if="authStatus?.isAuthenticated && authStatus.enrollment" class="success">
+      <div v-else-if="user" class="success">
         <strong>✓ Logged in</strong>
         <div style="margin-top: 10px">
-          <div>User ID: {{ authStatus.enrollment.user.id }}</div>
-          <div>Email: {{ authStatus.enrollment.user.email || "N/A" }}</div>
-          <div>
-            Enrolled in Course:
-            {{ authStatus.enrollment.course.title }}
-          </div>
+          <div>User ID: {{ user.id }}</div>
+          <div>Email: {{ user.email || "N/A" }}</div>
+          <div>Attributes: {{ JSON.stringify(user.attributes) }}</div>
         </div>
       </div>
 
       <!-- Not Authenticated State -->
-      <div v-else-if="authStatus && !authStatus.isAuthenticated" class="error">✗ Not logged in</div>
+      <div v-else-if="checked" class="error">✗ Not logged in</div>
 
       <!-- Error State -->
       <div v-else-if="error" class="error">✗ Error: {{ error }}</div>
@@ -38,7 +35,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { PathSDKInstance, AuthStatus } from "../../src/index";
+import type { PathSDKInstance, AuthenticatedUser } from "../../src/index";
 
 const { pathInstance } = defineProps<{
   pathInstance?: PathSDKInstance;
@@ -50,7 +47,8 @@ const emit = defineEmits<{
 
 const loading = ref(false);
 const isAuthenticated = ref(false);
-const authStatus = ref<AuthStatus | null>(null);
+const checked = ref(false);
+const user = ref<AuthenticatedUser | null>(null);
 const error = ref<string | null>(null);
 
 async function checkAuth() {
@@ -58,12 +56,13 @@ async function checkAuth() {
 
   loading.value = true;
   error.value = null;
-  authStatus.value = null;
+  user.value = null;
+  checked.value = false;
 
   try {
-    const status = await pathInstance.checkAuth();
-    authStatus.value = status;
-    isAuthenticated.value = status.isAuthenticated;
+    user.value = await pathInstance.checkAuth();
+    isAuthenticated.value = user.value !== null;
+    checked.value = true;
     emit("authChanged", isAuthenticated.value);
   } catch (err: any) {
     error.value = err.message;

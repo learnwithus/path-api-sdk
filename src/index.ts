@@ -1,13 +1,18 @@
 import type {
   LearnerAPIConfig,
-  Enrollment,
-  AuthStatus,
   SubmitProgressInput,
   Progress,
   LearnerStore,
+  AuthenticatedUser,
+  LearnerState,
 } from "./types.js";
 import { apiRequest, setToken, getToken } from "./fetch-helper.js";
 import { toSubmitBody } from "./submit-payload.js";
+import {
+  emptyLearnerState,
+  toLearnerState,
+  type LearnerOverviewResponse,
+} from "./learner-state.js";
 
 export * from "./types.js";
 export { apiRequest, setToken, getToken } from "./fetch-helper.js";
@@ -19,15 +24,15 @@ export { TOKEN_STORAGE_KEY } from "./constants.js";
  *
  * @example
  * ```ts
- * const enrollment = await path.getEnrollmentAndProgress();
- * const module1 = getProgress(enrollment, "module-1-completion");
+ * const state = await path.getLearnerState();
+ * const module1 = getProgress(state, "module-1-completion");
  * console.log(module1?.value); // "true"
  * ```
  */
-export function getProgress(enrollment: Enrollment, milestoneSlug: string): Progress | undefined {
-  const milestone = enrollment.milestones.find((m) => m.slug === milestoneSlug);
+export function getProgress(state: LearnerState, milestoneSlug: string): Progress | undefined {
+  const milestone = state.milestones.find((m) => m.slug === milestoneSlug);
   if (!milestone) return undefined;
-  return enrollment.progress.find((p) => p.courseMilestoneId === milestone.id);
+  return state.progress.find((p) => p.courseMilestoneId === milestone.id);
 }
 
 /**
@@ -38,7 +43,7 @@ export function getProgress(enrollment: Enrollment, milestoneSlug: string): Prog
  * export const path = pathSDK({ courseId: "your-course-id-here", courseUrl: "https://your-course-website.com" });
  *
  * // Use the SDK
- * const auth = await path.checkAuth();
+ * const user = await path.checkAuth();
  * await path.submitProgress("module-1-complete");
  * ```
  */
@@ -79,22 +84,25 @@ export function pathSDK(config: LearnerAPIConfig) {
     throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
   }
 
+  const getLearnerState = async (): Promise<LearnerState> => {
+    try {
+      const response = await apiRequest<LearnerOverviewResponse>(`${pathUrl}/api/learner?courseId=${courseId}`);
+      return toLearnerState(response);
+    } catch {
+      return emptyLearnerState();
+    }
+  };
+
   return {
+    /** Get the complete learner state. Any request failure resolves to the stable logged-out state. */
+    getLearnerState,
+
     /**
-     * Check authentication status
+     * Return the authenticated learner, including their read-only course attributes, or null.
      */
-    checkAuth: async (): Promise<AuthStatus> => {
-      try {
-        const enrollment = await apiRequest<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`);
-        return {
-          isAuthenticated: true,
-          enrollment,
-        };
-      } catch (error) {
-        return {
-          isAuthenticated: false,
-        };
-      }
+    checkAuth: async (): Promise<AuthenticatedUser | null> => {
+      const state = await getLearnerState();
+      return state.user;
     },
 
     /**
@@ -111,13 +119,6 @@ export function pathSDK(config: LearnerAPIConfig) {
     logout: async (): Promise<void> => {
       await apiRequest(`${pathUrl}/api/learner/logout?courseId=${courseId}`, { method: "POST" });
       setToken(null);
-    },
-
-    /**
-     * Get enrollment and progress data
-     */
-    getEnrollmentAndProgress: async (): Promise<Enrollment> => {
-      return await apiRequest<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`);
     },
 
     /**

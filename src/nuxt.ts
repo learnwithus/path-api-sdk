@@ -6,8 +6,10 @@ import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
 export type {
-  Enrollment,
-  AuthStatus,
+  AuthenticatedUser,
+  LearnerState,
+  LearnerAttributes,
+  LearnerAttributeValue,
   Progress,
   Milestone,
   MilestoneType,
@@ -143,7 +145,7 @@ export function createPathH3Middleware() {
  *
  * export default defineEventHandler(async (event) => {
  *   const path = await pathNuxtSDK(event, { courseId: 'your-course-id' });
- *   return path.getEnrollmentAndProgress();
+ *   return path.getLearnerState();
  * });
  * ```
  *

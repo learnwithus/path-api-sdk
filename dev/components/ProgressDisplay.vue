@@ -1,7 +1,7 @@
 <template>
   <div class="section">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px">
-      <h2 style="margin: 0">User Enrollment & Progress</h2>
+      <h2 style="margin: 0">Learner State</h2>
       <button id="loadProgressBtn" @click="loadProgress" :disabled="loading">
         {{ loading ? "Loading..." : "Load Progress" }}
       </button>
@@ -12,30 +12,30 @@
       <div v-if="loading">Loading user progress...</div>
 
       <!-- Success State -->
-      <div v-else-if="enrollment" class="success">
-        <strong>✓ Enrollment & Progress Loaded</strong>
+      <div v-else-if="state" class="success">
+        <strong>✓ Learner State Loaded</strong>
 
-        <div style="margin-top: 15px">
+        <div v-if="state.user" style="margin-top: 15px">
           <strong>User:</strong>
           <div style="margin-left: 15px">
-            <div>ID: {{ enrollment.user.id }}</div>
-            <div>Email: {{ enrollment.user.email || "N/A" }}</div>
+            <div>ID: {{ state.user.id }}</div>
+            <div>Email: {{ state.user.email || "N/A" }}</div>
+            <div>Attributes: {{ JSON.stringify(state.user.attributes) }}</div>
           </div>
         </div>
 
-        <div style="margin-top: 15px">
+        <div v-if="state.course" style="margin-top: 15px">
           <strong>Course:</strong>
           <div style="margin-left: 15px">
-            <div>ID: {{ enrollment.course.id }}</div>
-            <div>Title: {{ enrollment.course.title }}</div>
-            <div v-if="enrollment.course.description">Description: {{ enrollment.course.description }}</div>
+            <div>ID: {{ state.course.id }}</div>
+            <div>Title: {{ state.course.title }}</div>
           </div>
         </div>
 
-        <div v-if="enrollment.progress && enrollment.progress.length > 0" style="margin-top: 15px">
-          <strong>Progress Records ({{ enrollment.progress.length }}):</strong>
+        <div v-if="state.progress.length > 0" style="margin-top: 15px">
+          <strong>Progress Records ({{ state.progress.length }}):</strong>
           <div
-            v-for="progress in enrollment.progress"
+            v-for="progress in state.progress"
             :key="progress.id"
             style="
               margin-left: 15px;
@@ -68,7 +68,7 @@
               border-radius: 4px;
               overflow-x: auto;
             "
-            >{{ JSON.stringify(enrollment, null, 2) }}</pre>
+            >{{ JSON.stringify(state, null, 2) }}</pre>
         </details>
       </div>
 
@@ -80,27 +80,27 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { PathSDKInstance, Enrollment } from "../../src/index";
+import type { PathSDKInstance, LearnerState } from "../../src/index";
 
 const { pathInstance } = defineProps<{
   pathInstance?: PathSDKInstance;
 }>();
 
 const loading = ref(false);
-const enrollment = ref<Enrollment | null>(null);
+const state = ref<LearnerState | null>(null);
 const error = ref<string | null>(null);
 
 async function loadProgress() {
   if (!pathInstance) return;
 
   loading.value = true;
-  enrollment.value = null;
+  state.value = null;
   error.value = null;
 
   try {
-    const info = await pathInstance.getEnrollmentAndProgress();
-    enrollment.value = info;
-    console.log("Enrollment & progress:", info);
+    const info = await pathInstance.getLearnerState();
+    state.value = info;
+    console.log("Learner state:", info);
   } catch (err: any) {
     error.value = err.message;
     console.error("Failed to load progress:", err);

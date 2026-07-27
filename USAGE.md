@@ -14,8 +14,8 @@ export const path = pathSDK({
 });
 
 // Use it anywhere in your app
-const authStatus = await path.checkAuth();
-const enrollment = await path.getEnrollmentAndProgress();
+const user = await path.checkAuth();
+const state = await path.getLearnerState();
 await path.submitProgress("module-1-complete");
 ```
 
@@ -42,12 +42,13 @@ const path = pathSDK({
 
 #### `path.checkAuth()`
 
-Check if user is authenticated.
+Return the authenticated user, including read-only course attributes, or `null`.
 
 ```typescript
-const authStatus = await path.checkAuth();
-if (authStatus.isAuthenticated) {
-  console.log("User:", authStatus.enrollment.user);
+const user = await path.checkAuth();
+if (user) {
+  console.log("User:", user);
+  console.log("Attributes:", user.attributes);
 }
 ```
 
@@ -69,17 +70,19 @@ Logout the current user.
 await path.logout();
 ```
 
-#### `path.getEnrollmentAndProgress()`
+#### `path.getLearnerState()`
 
-Get enrollment and progress data.
+Get the complete learner state. When the learner is not logged in—or the request fails—it returns
+the stable empty state `{ user: null, course: null, milestones: [], progress: [] }`.
 
 ```typescript
-const enrollment = await path.getEnrollmentAndProgress();
-console.log("Course:", enrollment.course.title);
-console.log("Progress:", enrollment.progress);
+const state = await path.getLearnerState();
+console.log("Course:", state.course?.title);
+console.log("Progress:", state.progress);
+console.log("Attributes:", state.user?.attributes);
 
 // Check completeness via `.complete`, not `.value`:
-const done = enrollment.progress.filter((p) => p.complete).length;
+const done = state.progress.filter((p) => p.complete).length;
 ```
 
 Each `Progress` record carries a `complete` boolean — use it to tell whether a milestone is done. A
@@ -173,11 +176,13 @@ All types are exported:
 ```typescript
 import type {
   PathSDKInstance,
-  Enrollment,
+  AuthenticatedUser,
+  LearnerState,
+  LearnerAttributes,
+  LearnerAttributeValue,
   Progress,
   User,
   Course,
-  AuthStatus,
   SubmitProgressInput,
   SubmitProgressPayload,
   MilestoneType,
@@ -224,15 +229,15 @@ export function LoginButton() {
 // hooks/useAuth.ts
 import { useEffect, useState } from "react";
 import { path } from "../api/path";
-import type { AuthStatus } from "@vch-lt/path";
+import type { AuthenticatedUser } from "@vch-lt/path";
 
 export function useAuth() {
-  const [auth, setAuth] = useState<AuthStatus | null>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
 
   useEffect(() => {
-    path.checkAuth().then(setAuth);
+    path.checkAuth().then(setUser);
   }, []);
 
-  return auth;
+  return user;
 }
 ```

@@ -3,8 +3,10 @@ import type { ServerSDKConfig, ServerSDKInstance } from "./server-core.js";
 
 export type { ServerSDKInstance };
 export type {
-  Enrollment,
-  AuthStatus,
+  AuthenticatedUser,
+  LearnerState,
+  LearnerAttributes,
+  LearnerAttributeValue,
   Progress,
   Milestone,
   MilestoneType,
@@ -39,7 +41,7 @@ export interface ServerSDKOptions extends ServerSDKConfig {
  * export default defineEventHandler(async (event) => {
  *   const token = getCookie(event, TOKEN_STORAGE_KEY) ?? null;
  *   const path = pathServerSDK({ courseId: 'your-course-id', token });
- *   return path.getEnrollmentAndProgress();
+ *   return path.getLearnerState();
  * });
  * ```
  *
@@ -51,7 +53,7 @@ export interface ServerSDKOptions extends ServerSDKConfig {
  * app.get('/progress', async (req, res) => {
  *   const token = req.cookies[TOKEN_STORAGE_KEY] ?? null;
  *   const path = pathServerSDK({ courseId: 'your-course-id', token });
- *   res.json(await path.getEnrollmentAndProgress());
+ *   res.json(await path.getLearnerState());
  * });
  * ```
  */

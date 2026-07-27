@@ -1,7 +1,7 @@
 import { useAsyncData, useRequestEvent, useRuntimeConfig } from "#app";
 import pathSDK, { getProgress as _getProgress } from "@vch-lt/path";
 import { pathNuxtSDK as _pathNuxtSDK } from "@vch-lt/path/nuxt";
-import type { SubmitProgressInput, Enrollment, LearnerStore } from "@vch-lt/path";
+import type { SubmitProgressInput, LearnerState, LearnerStore } from "@vch-lt/path";
 
 function _config() {
   // runtimeConfig.public is available on both server and client
@@ -25,20 +25,20 @@ function _clientSDK() {
  * without a second network request.
  *
  * @example
- * const { data: auth } = await usePath().checkAuth();
- * if (!auth.value?.isAuthenticated) usePath().login(window.location.href);
+ * const { data: user } = await usePath().checkAuth();
+ * if (!user.value) usePath().login(window.location.href);
  */
 export const usePath = () => ({
-  /** Check auth status. SSR-safe — result is shared between server and client render. */
+  /** Return the authenticated user or null. SSR-safe—the result is shared across hydration. */
   checkAuth: () =>
     useAsyncData("path-auth", async () =>
       import.meta.server ? (await _serverSDK()).checkAuth() : _clientSDK().checkAuth(),
     ),
 
-  /** Get full enrollment and progress data. SSR-safe. */
-  getEnrollmentAndProgress: () =>
-    useAsyncData("path-enrollment", async () =>
-      import.meta.server ? (await _serverSDK()).getEnrollmentAndProgress() : _clientSDK().getEnrollmentAndProgress(),
+  /** Get the complete learner state. SSR-safe. */
+  getLearnerState: () =>
+    useAsyncData("path-learner-state", async () =>
+      import.meta.server ? (await _serverSDK()).getLearnerState() : _clientSDK().getLearnerState(),
     ),
 
   /** Submit a milestone progress value, or a `{ data, complete }` payload. Works on server and client. */
@@ -76,6 +76,6 @@ export const usePath = () => ({
     if (import.meta.client) await _clientSDK().logout();
   },
 
-  /** Look up a progress record by milestone slug. Requires enrollment data. */
-  getProgress: (enrollment: Enrollment, milestoneSlug: string) => _getProgress(enrollment, milestoneSlug),
+  /** Look up a progress record by milestone slug. */
+  getProgress: (state: LearnerState, milestoneSlug: string) => _getProgress(state, milestoneSlug),
 });

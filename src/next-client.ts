@@ -3,18 +3,13 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { pathSDK, getProgress as _getProgress } from "./index.js";
-import type {
-  AuthStatus,
-  Enrollment,
-  LearnerAPIConfig,
-  Progress,
-  SubmitProgressInput,
-  LearnerStore,
-} from "./types.js";
+import type { LearnerState, LearnerAPIConfig, Progress, SubmitProgressInput, LearnerStore } from "./types.js";
 
 export type {
-  AuthStatus,
-  Enrollment,
+  AuthenticatedUser,
+  LearnerState,
+  LearnerAttributes,
+  LearnerAttributeValue,
   LearnerAPIConfig,
   MilestoneType,
   MilestoneValue,
@@ -35,14 +30,13 @@ export type { PathSDKInstance } from "./index.js";
 // Context
 // ---------------------------------------------------------------------------
 
-interface PathContextValue {
-  auth: AuthStatus;
+interface PathContextValue extends LearnerState {
   isLoading: boolean;
   getProgress: (milestoneSlug: string) => Progress | undefined;
   submitProgress: (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) => Promise<Progress>;
   login: (callbackUrl?: string) => void;
   logout: () => Promise<void>;
-  refreshAuth: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 interface InternalPathContextValue extends PathContextValue {
@@ -56,14 +50,14 @@ const PathContext = createContext<InternalPathContextValue | null>(null);
 // ---------------------------------------------------------------------------
 
 export interface PathProviderClientProps {
-  /** Server-fetched auth status for hydration. If omitted, fetches on mount. */
-  initialAuth?: AuthStatus;
+  /** Server-fetched learner state for hydration. If omitted, fetches on mount. */
+  initialState?: LearnerState;
   /** SDK configuration. Falls back to NEXT_PUBLIC_* env vars if omitted. */
   config?: Partial<LearnerAPIConfig>;
   children?: ReactNode;
 }
 
-export function PathProviderClient({ initialAuth, config, children }: PathProviderClientProps) {
+export function PathProviderClient({ initialState, config, children }: PathProviderClientProps) {
   // Create SDK instance once
   const sdkRef = useRef<ReturnType<typeof pathSDK> | null>(null);
   if (sdkRef.current === null) {
@@ -74,16 +68,18 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
   }
   const sdk = sdkRef.current;
 
-  const [auth, setAuth] = useState<AuthStatus>(() => initialAuth ?? { isAuthenticated: false });
-  const [isLoading, setIsLoading] = useState(!initialAuth);
+  const [state, setState] = useState<LearnerState>(
+    () => initialState ?? { user: null, course: null, milestones: [], progress: [] },
+  );
+  const [isLoading, setIsLoading] = useState(!initialState);
 
-  // If no initialAuth was provided, fetch on mount
+  // If no initial state was provided, fetch on mount
   useEffect(() => {
-    if (initialAuth) return;
+    if (initialState) return;
     let cancelled = false;
-    sdk.checkAuth().then((result) => {
+    sdk.getLearnerState().then((result) => {
       if (!cancelled) {
-        setAuth(result);
+        setState(result);
         setIsLoading(false);
       }
     });
@@ -96,14 +92,13 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
   const submitProgress = useCallback(
     async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) => {
       const progress = await sdk.submitProgress(milestoneSlug, valueOrPayload);
-      setAuth((prev) => {
-        if (!prev.enrollment) return prev;
-        const existing = prev.enrollment.progress ?? [];
+      setState((previous) => {
+        const existing = previous.progress;
         const idx = existing.findIndex((p) => p.courseMilestoneId === progress.courseMilestoneId);
         const updated = idx >= 0 ? existing.map((p, i) => (i === idx ? progress : p)) : [...existing, progress];
         return {
-          ...prev,
-          enrollment: { ...prev.enrollment, progress: updated },
+          ...previous,
+          progress: updated,
         };
       });
       return progress;
@@ -111,36 +106,35 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
     [sdk],
   );
 
-  const refreshAuth = useCallback(async () => {
-    const result = await sdk.checkAuth();
-    setAuth(result);
+  const refresh = useCallback(async () => {
+    const result = await sdk.getLearnerState();
+    setState(result);
   }, [sdk]);
 
   const logout = useCallback(async () => {
     await sdk.logout();
-    setAuth({ isAuthenticated: false });
+    setState({ user: null, course: null, milestones: [], progress: [] });
   }, [sdk]);
 
   const getProgress = useCallback(
     (milestoneSlug: string): Progress | undefined => {
-      if (!auth.enrollment) return undefined;
-      return _getProgress(auth.enrollment, milestoneSlug);
+      return _getProgress(state, milestoneSlug);
     },
-    [auth],
+    [state],
   );
 
   const value = useMemo<InternalPathContextValue>(
     () => ({
       sdk,
-      auth,
+      ...state,
       isLoading,
       getProgress,
       submitProgress,
       login: sdk.login,
       logout,
-      refreshAuth,
+      refresh,
     }),
-    [sdk, auth, isLoading, getProgress, submitProgress, logout, refreshAuth],
+    [sdk, state, isLoading, getProgress, submitProgress, logout, refresh],
   );
 
   return createElement(PathContext.Provider, { value }, children);
@@ -151,7 +145,7 @@ export function PathProviderClient({ initialAuth, config, children }: PathProvid
 // ---------------------------------------------------------------------------
 
 /**
- * Access reactive Path auth, enrollment, and progress state.
+ * Access reactive Path user, course, milestone, and progress state.
  * Must be used within a `<PathProvider>`.
  */
 export function usePath(): PathContextValue {
@@ -177,7 +171,7 @@ export interface UseLearnerStoreResult {
 /**
  * Read and write the learner store.
  *
- * Deliberately separate from `usePath()`: the provider fetches auth for every app, and folding the
+ * Deliberately separate from `usePath()`: the provider fetches learner state for every app, and folding the
  * the learner store in would cost a second request whether or not an app uses the feature. Call this hook
  * only in the components that need it.
  *

@@ -1,11 +1,16 @@
 import type {
-  Enrollment,
-  AuthStatus,
+  AuthenticatedUser,
+  LearnerState,
   Progress,
   SubmitProgressInput,
   LearnerStore,
 } from "./types.js";
 import { toSubmitBody } from "./submit-payload.js";
+import {
+  emptyLearnerState,
+  toLearnerState,
+  type LearnerOverviewResponse,
+} from "./learner-state.js";
 
 export interface ServerSDKConfig {
   /**
@@ -59,6 +64,19 @@ export function createServerSDK(
     throw new Error("[@vch-lt/path] courseId is required. Pass it in config or set PATH_COURSE_ID in the environment.");
   }
 
+  const getLearnerState = async (): Promise<LearnerState> => {
+    try {
+      const response = await serverFetch<LearnerOverviewResponse>(
+        `${pathUrl}/api/learner?courseId=${courseId}`,
+        token,
+        onTokenRefresh,
+      );
+      return toLearnerState(response);
+    } catch {
+      return emptyLearnerState();
+    }
+  };
+
   return {
     /**
      * Build the Path login URL. Pass the result to Next.js `redirect()` (from `next/navigation`)
@@ -71,8 +89,8 @@ export function createServerSDK(
      * import { redirect } from 'next/navigation';
      *
      * const path = await pathServerSDK({ courseId: 'your-course-id', courseUrl: 'https://your-site.com' });
-     * const auth = await path.checkAuth();
-     * if (!auth.isAuthenticated) redirect(path.getLoginUrl());
+     * const user = await path.checkAuth();
+     * if (!user) redirect(path.getLoginUrl());
      * ```
      */
     getLoginUrl: (callbackUrl?: string): string => {
@@ -80,27 +98,13 @@ export function createServerSDK(
       return `${pathUrl}/learner/login?courseId=${courseId}&callbackUrl=${callback}`;
     },
 
-    /**
-     * Check authentication status and return enrollment data if authenticated.
-     */
-    checkAuth: async (): Promise<AuthStatus> => {
-      try {
-        const enrollment = await serverFetch<Enrollment>(
-          `${pathUrl}/api/learner?courseId=${courseId}`,
-          token,
-          onTokenRefresh,
-        );
-        return { isAuthenticated: true, enrollment };
-      } catch {
-        return { isAuthenticated: false };
-      }
-    },
+    /** Get the complete learner state. Any request failure resolves to the stable logged-out state. */
+    getLearnerState,
 
-    /**
-     * Get enrollment and progress data for the current user.
-     */
-    getEnrollmentAndProgress: async (): Promise<Enrollment> => {
-      return serverFetch<Enrollment>(`${pathUrl}/api/learner?courseId=${courseId}`, token, onTokenRefresh);
+    /** Return the authenticated learner, including read-only course attributes, or null. */
+    checkAuth: async (): Promise<AuthenticatedUser | null> => {
+      const state = await getLearnerState();
+      return state.user;
     },
 
     /**
