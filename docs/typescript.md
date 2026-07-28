@@ -9,7 +9,7 @@ npm install @vch-lt/path
 ## Browser
 
 ```ts
-import { getProgress, pathSDK } from "@vch-lt/path";
+import { getProgress, PathApiError, pathSDK } from "@vch-lt/path";
 
 const path = pathSDK({
   courseId: "course-id",
@@ -30,6 +30,23 @@ await path.updateLearnerStore({ notes: "Ask about the class" });
 `getLearnerState()` returns the flattened state described in the [root README](../README.md).
 `user.attributes` is a read-only record whose values are strings, numbers, booleans, string arrays,
 or null. Use `Progress.complete` to determine completion; a stored value does not imply completion.
+
+Learner-state reads are strict. A successful `checkAuth()` returning `null` is the only logged-out
+signal; HTTP failures throw `PathApiError`, transport failures throw the platform fetch error, and
+invalid success responses throw a response-shape error:
+
+```ts
+try {
+  const user = await path.checkAuth();
+  if (!user) path.login(window.location.href);
+} catch (error) {
+  if (error instanceof PathApiError && error.code === "UNAUTHENTICATED") {
+    path.login(window.location.href);
+  } else {
+    showRetryablePathError(error);
+  }
+}
+```
 
 The browser client consumes `?path-token=`, stores it in the `path_bearer_token` cookie, and removes
 only that query parameter from the address bar. The cookie uses `Path=/`, `SameSite=Lax`, is secure
@@ -98,5 +115,6 @@ The module supplies the universal `usePath()` composable and token middleware. R
 Nuxt `AsyncData`; action methods return promises. Server routes can call
 `pathNuxtSDK(event, config)` directly. Learner-store reads remain separate from learner-state reads.
 
-With any adapter, a failed learner-state read looks logged out. An SSR guard such as
-`if (!state.user) redirect(...)` also redirects when Path is unavailable.
+With every adapter, redirect only after a successful read establishes that `user` is null. Nuxt
+puts thrown failures in `AsyncData.error`. The Next client hook exposes `error`; server prefetch
+throws to the nearest Next error boundary. This keeps Path outages distinct from anonymous users.

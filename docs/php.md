@@ -42,7 +42,7 @@ $path->submitProgress(
 
 `LearnerState` exposes readonly `user`, `course`, `milestones`, and `progress` properties.
 `AuthenticatedUser` adds readonly `attributes`. See the [shared contract](../README.md) for the
-logged-out failure behavior.
+strict learner-state failure behavior.
 
 ## Methods
 
@@ -58,12 +58,17 @@ logged-out failure behavior.
 A bare `submitProgress()` input is sent as the milestone value. Use `ProgressSubmission` when
 completeness must be supplied separately or for a data-less completion milestone.
 
-`getLearnerState()` intentionally catches request, authorization, server, decoding, and shape
-failures and returns the stable logged-out state. Other methods throw:
+All methods, including `getLearnerState()` and `checkAuth()`, throw on failures:
 
 - `TransportException` for PSR client/network failures
 - `ApiException` for non-success HTTP status codes
 - `ResponseException` for encoding, decoding, or response-shape failures
+
+`ApiException::$apiCode` contains Path's stable error code and `ApiException::$details` contains
+decoded, sanitized details when present. For compatibility with older Path deployments, the SDK
+derives `apiCode` from the HTTP status when the response body has no code. Redirect to login only
+when `checkAuth()` successfully returns `null` or when `apiCode === 'UNAUTHENTICATED'`; handle
+service and transport failures as retryable outages.
 
 When a response includes `set-auth-token`, the supplied `TokenStorageInterface` receives it before
 the HTTP status is evaluated. A successful `logout()` clears that token storage.

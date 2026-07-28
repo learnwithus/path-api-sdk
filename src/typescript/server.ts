@@ -19,6 +19,8 @@ export type {
   LearnerStoreValue,
 } from "./types.js";
 export type { ServerSDKConfig } from "./server-core.js";
+export { PathApiError } from "./api-error.js";
+export type { ApiErrorBody, ApiErrorCode } from "./api-error.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
 
 export interface ServerSDKOptions extends ServerSDKConfig {

@@ -1,6 +1,6 @@
 import { parseCookie, stringifySetCookie } from "cookie";
-import type { APIError } from "./types.js";
 import { TOKEN_STORAGE_KEY } from "./constants.js";
+import { pathApiErrorFromResponse } from "./api-error.js";
 
 /**
  * Options for making API requests
@@ -47,30 +47,12 @@ export function getToken(): string | null {
 }
 
 /**
- * Parse error response from API
- */
-async function parseError(response: Response): Promise<APIError> {
-  try {
-    const error = await response.json();
-    return {
-      message: error.message || "An error occurred",
-      statusCode: response.status,
-    };
-  } catch {
-    return {
-      message: "An error occurred",
-      statusCode: response.status,
-    };
-  }
-}
-
-/**
  * Make an authenticated API request using a bearer token
  *
  * @param url - The URL to fetch
  * @param options - Fetch options
  * @returns Parsed JSON response
- * @throws {Error} If the request fails
+ * @throws {PathApiError} If Path returns a non-success HTTP status
  */
 export async function apiRequest<T = unknown>(url: string, options: FetchOptions = {}): Promise<T> {
   const { method = "GET", body } = options;
@@ -91,8 +73,7 @@ export async function apiRequest<T = unknown>(url: string, options: FetchOptions
   if (refreshedToken) setToken(refreshedToken);
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error.message || "Request failed");
+    throw await pathApiErrorFromResponse(response);
   }
 
   if (response.headers.get("content-type")?.includes("application/json")) {

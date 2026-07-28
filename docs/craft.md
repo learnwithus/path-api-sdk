@@ -53,8 +53,10 @@ Route guards belong to the consuming site:
 {% endif %}
 ```
 
-Because state failures look logged out, this guard also redirects during authorization errors or a
-Path outage.
+Learner-state failures now throw. Catch `ApiException`, `TransportException`, and
+`ResponseException` in a controller or Twig error boundary and show a retry action; redirect only
+after a successful read returns no user (or an API failure explicitly has
+`apiCode === 'UNAUTHENTICATED'`). This prevents a Path outage from looking like logout.
 
 ## Writes and logout
 

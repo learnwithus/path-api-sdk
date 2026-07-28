@@ -42,7 +42,8 @@ Do not add tests or test infrastructure to this repository. Before release, manu
 6. Token rotation on success and error responses.
 7. Server and browser logout.
 8. Expired tokens and denied course access.
-9. Unavailable Path and the resulting stable logged-out/SSR redirect behavior.
+9. Stable typed handling for 401, 403, 409, 413, 500, and 503 responses.
+10. Malformed JSON, transport failures, and unavailable Path remain distinct from logged-out state.
 
 Inspect both npm and Composer archives before publishing. This release supports only the existing
 raw `path-token` callback. PKCE registration/activity support is deferred to a later breaking

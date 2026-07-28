@@ -7,10 +7,10 @@ import type {
 } from "./types.js";
 import { toSubmitBody } from "./submit-payload.js";
 import {
-  emptyLearnerState,
   toLearnerState,
   type LearnerOverviewResponse,
 } from "./learner-state.js";
+import { pathApiErrorFromResponse } from "./api-error.js";
 
 export interface ServerSDKConfig {
   /**
@@ -45,8 +45,7 @@ async function serverFetch<T>(
   if (refreshedToken && onTokenChange) await onTokenChange(refreshedToken);
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(error.message || "Request failed");
+    throw await pathApiErrorFromResponse(response);
   }
 
   if (response.headers.get("content-type")?.includes("application/json")) {
@@ -73,16 +72,12 @@ export function createServerSDK(
   };
 
   const getLearnerState = async (): Promise<LearnerState> => {
-    try {
-      const response = await serverFetch<LearnerOverviewResponse>(
-        `${pathUrl}/api/learner?courseId=${courseId}`,
-        currentToken,
-        handleTokenChange,
-      );
-      return toLearnerState(response);
-    } catch {
-      return emptyLearnerState();
-    }
+    const response = await serverFetch<LearnerOverviewResponse>(
+      `${pathUrl}/api/learner?courseId=${courseId}`,
+      currentToken,
+      handleTokenChange,
+    );
+    return toLearnerState(response);
   };
 
   return {
@@ -106,7 +101,7 @@ export function createServerSDK(
       return `${pathUrl}/learner/login?courseId=${courseId}&callbackUrl=${callback}`;
     },
 
-    /** Get the complete learner state. Any request failure resolves to the stable logged-out state. */
+    /** Get the complete learner state. Request and response failures are thrown. */
     getLearnerState,
 
     /** Return the authenticated learner, including read-only course attributes, or null. */
