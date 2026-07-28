@@ -19,11 +19,11 @@
         </div>
       </div>
 
-      <!-- Not Authenticated State -->
-      <div v-else-if="checked" class="error">✗ Not logged in</div>
-
       <!-- Error State -->
       <div v-else-if="error" class="error">✗ Error: {{ error }}</div>
+
+      <!-- Not Authenticated State -->
+      <div v-else-if="checked" class="error">✗ Not logged in</div>
     </div>
 
     <div id="authButtons" style="margin-top: 10px">
@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import type { PathSDKInstance, AuthenticatedUser } from "../../../src/typescript/index";
+import { PathApiError, type PathSDKInstance, type AuthenticatedUser } from "../../../src/typescript/index";
 
 const { pathInstance } = defineProps<{
   pathInstance?: PathSDKInstance;
@@ -64,8 +64,10 @@ async function checkAuth() {
     isAuthenticated.value = user.value !== null;
     checked.value = true;
     emit("authChanged", isAuthenticated.value);
-  } catch (err: any) {
-    error.value = err.message;
+  } catch (reason: unknown) {
+    error.value = reason instanceof PathApiError
+      ? `${reason.code}: ${reason.message}`
+      : reason instanceof Error ? reason.message : "Path request failed.";
     isAuthenticated.value = false;
     emit("authChanged", false);
   } finally {
@@ -86,8 +88,8 @@ async function logout() {
     await pathInstance.logout();
     await checkAuth();
     alert("Logged out successfully");
-  } catch (error: any) {
-    alert("Failed to logout: " + error.message);
+  } catch (reason: unknown) {
+    alert("Failed to logout: " + (reason instanceof Error ? reason.message : "Path request failed."));
   }
 }
 

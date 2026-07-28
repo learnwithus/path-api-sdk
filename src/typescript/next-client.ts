@@ -4,6 +4,7 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import type { ReactNode } from "react";
 import { pathSDK, getProgress as _getProgress } from "./index.js";
 import type { LearnerState, LearnerAPIConfig, Progress, SubmitProgressInput, LearnerStore } from "./types.js";
+import type { PathApiError } from "./api-error.js";
 
 export type {
   AuthenticatedUser,
@@ -20,6 +21,8 @@ export type {
   LearnerStoreObjectValue,
   LearnerStoreValue,
 } from "./types.js";
+export { PathApiError } from "./api-error.js";
+export type { ApiErrorBody, ApiErrorCode } from "./api-error.js";
 export type { Progress, User, Course, Milestone } from "./types.js";
 
 // Re-export the client-side SDK and utilities for direct use in Client Components
@@ -32,6 +35,7 @@ export type { PathSDKInstance } from "./index.js";
 
 interface PathContextValue extends LearnerState {
   isLoading: boolean;
+  error: PathApiError | Error | null;
   getProgress: (milestoneSlug: string) => Progress | undefined;
   submitProgress: (milestoneSlug: string, valueOrPayload?: SubmitProgressInput) => Promise<Progress>;
   login: (callbackUrl?: string) => void;
@@ -72,17 +76,25 @@ export function PathProviderClient({ initialState, config, children }: PathProvi
     () => initialState ?? { user: null, course: null, milestones: [], progress: [] },
   );
   const [isLoading, setIsLoading] = useState(!initialState);
+  const [error, setError] = useState<PathApiError | Error | null>(null);
 
   // If no initial state was provided, fetch on mount
   useEffect(() => {
     if (initialState) return;
     let cancelled = false;
-    sdk.getLearnerState().then((result) => {
-      if (!cancelled) {
-        setState(result);
-        setIsLoading(false);
-      }
-    });
+    sdk.getLearnerState()
+      .then((result) => {
+        if (!cancelled) {
+          setState(result);
+          setError(null);
+        }
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(reason instanceof Error ? reason : new Error("Path request failed."));
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -107,8 +119,17 @@ export function PathProviderClient({ initialState, config, children }: PathProvi
   );
 
   const refresh = useCallback(async () => {
-    const result = await sdk.getLearnerState();
-    setState(result);
+    setIsLoading(true);
+    try {
+      const result = await sdk.getLearnerState();
+      setState(result);
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason : new Error("Path request failed."));
+      throw reason;
+    } finally {
+      setIsLoading(false);
+    }
   }, [sdk]);
 
   const logout = useCallback(async () => {
@@ -128,13 +149,14 @@ export function PathProviderClient({ initialState, config, children }: PathProvi
       sdk,
       ...state,
       isLoading,
+      error,
       getProgress,
       submitProgress,
       login: sdk.login,
       logout,
       refresh,
     }),
-    [sdk, state, isLoading, getProgress, submitProgress, logout, refresh],
+    [sdk, state, isLoading, error, getProgress, submitProgress, logout, refresh],
   );
 
   return createElement(PathContext.Provider, { value }, children);

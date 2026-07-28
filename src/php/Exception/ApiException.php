@@ -10,6 +10,8 @@ final class ApiException extends PathException
         string $message,
         public readonly int $statusCode,
         public readonly ?string $responseBody = null,
+        public readonly ?string $apiCode = null,
+        public readonly mixed $details = null,
     ) {
         parent::__construct($message, $statusCode);
     }

@@ -46,11 +46,7 @@ final class PathClient
 
     public function getLearnerState(): LearnerState
     {
-        try {
-            return Hydrator::learnerState($this->requestJson('GET', '/api/learner'));
-        } catch (\Throwable) {
-            return LearnerState::loggedOut();
-        }
+        return Hydrator::learnerState($this->requestJson('GET', '/api/learner'));
     }
 
     public function checkAuth(): ?AuthenticatedUser
@@ -183,17 +179,40 @@ final class PathClient
         if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
             $rawBody = (string) $response->getBody();
             $message = 'Path request failed.';
+            $apiCode = $this->apiCodeForStatus($response->getStatusCode());
+            $details = null;
             try {
                 $error = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
                 if (is_array($error) && isset($error['message']) && is_string($error['message'])) {
                     $message = $error['message'];
                 }
+                if (is_array($error) && isset($error['code']) && is_string($error['code'])) {
+                    $apiCode = $error['code'];
+                }
+                if (is_array($error) && array_key_exists('details', $error)) {
+                    $details = $error['details'];
+                }
             } catch (\JsonException) {
                 // Preserve the generic message and raw response body.
             }
-            throw new ApiException($message, $response->getStatusCode(), $rawBody);
+            throw new ApiException($message, $response->getStatusCode(), $rawBody, $apiCode, $details);
         }
 
         return $response;
+    }
+
+    private function apiCodeForStatus(int $statusCode): string
+    {
+        return match ($statusCode) {
+            400 => 'VALIDATION_ERROR',
+            401 => 'UNAUTHENTICATED',
+            403 => 'FORBIDDEN',
+            404 => 'NOT_FOUND',
+            405 => 'METHOD_NOT_ALLOWED',
+            409 => 'CONFLICT',
+            413 => 'PAYLOAD_TOO_LARGE',
+            503 => 'SERVICE_UNAVAILABLE',
+            default => 'INTERNAL_ERROR',
+        };
     }
 }

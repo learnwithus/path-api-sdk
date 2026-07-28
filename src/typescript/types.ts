@@ -181,10 +181,5 @@ export interface LearnerAPIConfig {
   courseUrl: string;
 }
 
-/**
- * Error response from API
- */
-export interface APIError {
-  message: string;
-  statusCode?: number;
-}
+/** @deprecated Use `ApiErrorBody` and `PathApiError` instead. */
+export type APIError = import("./api-error.js").ApiErrorBody;

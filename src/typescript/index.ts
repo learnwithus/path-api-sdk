@@ -9,12 +9,12 @@ import type {
 import { apiRequest, setToken, getToken } from "./fetch-helper.js";
 import { toSubmitBody } from "./submit-payload.js";
 import {
-  emptyLearnerState,
   toLearnerState,
   type LearnerOverviewResponse,
 } from "./learner-state.js";
 
 export * from "./types.js";
+export * from "./api-error.js";
 export { apiRequest, setToken, getToken } from "./fetch-helper.js";
 export { TOKEN_STORAGE_KEY } from "./constants.js";
 
@@ -85,16 +85,12 @@ export function pathSDK(config: LearnerAPIConfig) {
   }
 
   const getLearnerState = async (): Promise<LearnerState> => {
-    try {
-      const response = await apiRequest<LearnerOverviewResponse>(`${pathUrl}/api/learner?courseId=${courseId}`);
-      return toLearnerState(response);
-    } catch {
-      return emptyLearnerState();
-    }
+    const response = await apiRequest<LearnerOverviewResponse>(`${pathUrl}/api/learner?courseId=${courseId}`);
+    return toLearnerState(response);
   };
 
   return {
-    /** Get the complete learner state. Any request failure resolves to the stable logged-out state. */
+    /** Get the complete learner state. Request and response failures are thrown. */
     getLearnerState,
 
     /**

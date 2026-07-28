@@ -14,18 +14,18 @@ Both languages expose the same primary operations:
 - Progress is looked up by milestone slug with `getProgress(state, slug)`.
 
 The Path wire response places `attributes` at its root. Each SDK moves those values onto the
-authenticated user. If any learner-state request, authorization, server, network, decoding, or
-response-shape error occurs, the read resolves to this stable logged-out state:
+authenticated user. All operations, including learner-state reads, are strict: `user === null`
+means Path successfully established that there is no authenticated learner, while request,
+authorization, server, network, decoding, and response-shape failures throw.
 
-```text
-user = null
-course = null
-milestones = []
-progress = []
-```
+TypeScript HTTP failures are `PathApiError` instances with `statusCode`, stable `code`, and optional
+sanitized `details`. PHP `ApiException` exposes the same values as `statusCode`, `apiCode`, and
+`details`. Legacy Path error bodies remain compatible: both clients derive a stable code from the
+HTTP status when the body does not contain one.
 
-Progress, learner-store, and logout operations are strict and report errors. Applications that
-redirect when `user` is null will therefore also redirect during a Path outage.
+This is a breaking authentication semantic. Consumers upgrading from 0.5 must catch failures before
+redirecting: redirect only when a successful `checkAuth()` returns `null`, and show a retryable
+service error for `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`, transport, or response failures.
 
 ## Guides
 
