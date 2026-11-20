@@ -10,14 +10,15 @@ examples/craft/       Craft integration example
 ```
 
 There are no npm workspaces, Composer path repositories, or subtree release steps. npm publishes
-only `dist`; Composer autoloads only `src/php`. Publish npm `@vch-lt/path@0.6.1` and Composer
-`vch-lt/path:0.6.1` from the same commit and `v0.6.1` tag.
+only `dist`; Composer autoloads only `src/php`. Publish npm `@vch-lt/path@0.6.2` and Composer
+`vch-lt/path:0.6.2` from the same commit and `v0.6.2` tag.
 
 ## Commands
 
 ```bash
 npm install
 npm run dev
+npm run typecheck
 npm run build
 
 composer install
@@ -28,7 +29,10 @@ npm pack --dry-run
 composer archive --format=zip
 ```
 
-The production build includes TypeScript declaration generation. The development command serves
+The production build runs `npm run typecheck` first, then generates TypeScript declarations.
+`typecheck` covers `src/typescript` and, through `tsconfig.nuxt-runtime.json`, the Nuxt runtime
+files in `src/typescript/nuxt-runtime`. Those files ship as TypeScript source and are compiled by
+each consuming Nuxt app, so a type error there fails the consumer's own type check. The development command serves
 the relocated Vue harness at `http://localhost:5500`. Connect the Craft example to a test Path
 course through its three environment variables.
 
