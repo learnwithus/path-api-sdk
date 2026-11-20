@@ -68,6 +68,11 @@ final class PathClient
         return rtrim($this->config->pathUrl, '/') . '/learner/login?' . $query;
     }
 
+    /**
+     * Submit progress for a milestone. A bare input is the milestone value; an `object` milestone's
+     * value is an associative array keyed by field. Use ProgressSubmission to set completeness
+     * separately or for a data-less completion milestone.
+     */
     public function submitProgress(string $milestoneSlug, mixed $input = null): Progress
     {
         $body = ['milestoneSlug' => $milestoneSlug];
