@@ -12,6 +12,9 @@ Both languages expose the same primary operations:
 - The authenticated user's read-only course attributes are at `user.attributes`.
 - Learner-store data is fetched separately and only when requested.
 - Progress is looked up by milestone slug with `getProgress(state, slug)`.
+- An `object` milestone records a group of named values. Its `fields` list each field's `key`,
+  `label`, Path `fieldType`, and SDK-derived primitive `valueType` (`string`, `number`, `boolean`,
+  or `string[]`). Its progress value is an object keyed by field. `fields` is null for other types.
 
 The Path wire response places `attributes` at its root. Each SDK moves those values onto the
 authenticated user. If any learner-state request, authorization, server, network, decoding, or
@@ -33,6 +36,7 @@ redirect when `user` is null will therefore also redirect during a Path outage.
 - [PHP](docs/php.md)
 - [Craft CMS](docs/craft.md)
 - [Development and release validation](docs/development.md)
+- [Changelog](CHANGELOG.md)
 
 This release supports Path's current raw `?path-token=` login callback. It does not implement the
 pending PKCE registration/activity API; that protocol requires a later breaking SDK release.

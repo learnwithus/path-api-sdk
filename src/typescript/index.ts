@@ -127,7 +127,8 @@ export function pathSDK(config: LearnerAPIConfig) {
      * For a `completion` milestone, omit the second argument (or pass `true`) to mark it complete;
      * pass `false` to mark it incomplete. For every other milestone type, a bare second argument is
      * data and marks the milestone complete. Use `{ data, complete }` to control the two fields
-     * independently.
+     * independently. An `object` milestone's value must always be wrapped as `{ data: { ... } }`,
+     * because a bare plain object is read as the payload itself.
      *
      * @example
      * ```ts
@@ -136,6 +137,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * await path.submitProgress("module-1-quiz", true);                                // value true, complete
      * await path.submitProgress("module-1-checkbox", { data: false, complete: true }); // value false, complete
      * await path.submitProgress("reflection", { data: "draft", complete: false });     // saved but incomplete
+     * await path.submitProgress("intake-form", { data: { role: "Nurse", years: 4 } });  // object milestone
      * ```
      */
     submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput): Promise<Progress> => {
