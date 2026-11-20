@@ -11,7 +11,13 @@ function _config() {
 
 function _serverSDK() {
   const cfg = _config();
-  return _pathNuxtSDK(useRequestEvent(), cfg);
+  const event = useRequestEvent();
+  if (!event) {
+    throw new Error(
+      "[@vch-lt/path] usePath() server call has no request event. Call it during SSR from a page, component, layout, or plugin setup.",
+    );
+  }
+  return _pathNuxtSDK(event, cfg);
 }
 
 function _clientSDK() {

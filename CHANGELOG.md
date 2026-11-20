@@ -3,6 +3,14 @@
 The npm package `@vch-lt/path` and the Composer package `vch-lt/path` share versions and release
 from the same tag.
 
+## 0.6.2
+
+- Fix the Nuxt `usePath()` composable failing consumers' type checks with "Argument of type
+  'H3Event | undefined' is not assignable to parameter of type 'H3Event'". Server calls made
+  without a request event now throw a clear error instead of passing `undefined` on.
+- Type-check the Nuxt runtime files (`npm run typecheck`, also run by `npm run build`), which are
+  shipped as TypeScript source and were previously excluded from the build's type check.
+
 ## 0.6.1
 
 - Document object milestones in the README and in `submitProgress` editor documentation for
