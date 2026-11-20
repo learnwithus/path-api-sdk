@@ -26,6 +26,8 @@ export interface Milestone {
   title: string;
   slug: string;
   type: MilestoneType;
+  /** The field definitions of an `object` milestone; null for every other type. */
+  fields: MilestoneField[] | null;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -94,19 +96,56 @@ export type SubmitProgressPayload =
     };
 
 /**
+ * One field value of an `object` milestone. `multiselect` and `list` fields hold string arrays,
+ * `date` and `datetime` fields hold strings, and a cleared number is `null`.
+ */
+export type MilestoneFieldValue = string | number | boolean | string[] | null;
+
+/** The value an `object` milestone holds: each filled field's key mapped to its value. */
+export type MilestoneObjectValue = Record<string, MilestoneFieldValue>;
+
+/**
  * Milestone value types
  */
-export type MilestoneValue = boolean | number | string | Array<string | number>;
+export type MilestoneValue = boolean | number | string | Array<string | number> | MilestoneObjectValue;
 
 /** Milestone data shapes supported by the Path API. */
-export type MilestoneType = "boolean" | "string" | "array" | "number" | "completion";
+export type MilestoneType = "boolean" | "string" | "array" | "number" | "object" | "completion";
+
+/** The data-field types an `object` milestone's fields can use. Fields are always scalar. */
+export type MilestoneFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "date"
+  | "datetime"
+  | "checkbox"
+  | "select"
+  | "multiselect"
+  | "list";
+
+/** The primitive type a milestone field's value holds, apart from `null` for a cleared number. */
+export type MilestoneFieldValueType = "string" | "number" | "boolean" | "string[]";
+
+/** One field of an `object` milestone, defined like a Path data field. Values are stored under `key`. */
+export interface MilestoneField {
+  key: string;
+  label: string;
+  fieldType: MilestoneFieldType;
+  /** The primitive type of this field's value, derived by the SDK from `fieldType`. */
+  valueType: MilestoneFieldValueType;
+  /** The allowed choices of a `select` or `multiselect` field. */
+  options?: string[] | null;
+  defaultValue?: unknown;
+}
 
 /**
  * Accepted second argument to `submitProgress`. For a data-less completion milestone, omit it or
  * pass `true` to mark it complete, and pass `false` to mark it incomplete. For every other type, a
- * bare value is milestone data.
+ * bare value is milestone data. An `object` milestone's value must be wrapped as `{ data }`, since
+ * a bare plain object is always read as a {@link SubmitProgressPayload}.
  */
-export type SubmitProgressInput = MilestoneValue | SubmitProgressPayload;
+export type SubmitProgressInput = Exclude<MilestoneValue, MilestoneObjectValue> | SubmitProgressPayload;
 
 // ---------------------------------------------------------------------------
 // Learner store
