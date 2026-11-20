@@ -8,11 +8,25 @@ use VchLt\Path\Dto\AuthenticatedUser;
 use VchLt\Path\Dto\Course;
 use VchLt\Path\Dto\LearnerState;
 use VchLt\Path\Dto\Milestone;
+use VchLt\Path\Dto\MilestoneField;
 use VchLt\Path\Dto\Progress;
 use VchLt\Path\Exception\ResponseException;
 
 final class Hydrator
 {
+    /** Each milestone field type mapped to the primitive type of its value. */
+    private const MILESTONE_FIELD_VALUE_TYPES = [
+        'text' => 'string',
+        'textarea' => 'string',
+        'date' => 'string',
+        'datetime' => 'string',
+        'select' => 'string',
+        'number' => 'number',
+        'checkbox' => 'boolean',
+        'multiselect' => 'string[]',
+        'list' => 'string[]',
+    ];
+
     /** @param array<string, mixed> $data */
     public static function learnerState(array $data): LearnerState
     {
@@ -65,7 +79,7 @@ final class Hydrator
     private static function milestone(array $data): Milestone
     {
         $type = self::string($data, 'type');
-        if (!in_array($type, ['boolean', 'string', 'array', 'number', 'completion'], true)) {
+        if (!in_array($type, ['boolean', 'string', 'array', 'number', 'object', 'completion'], true)) {
             throw new ResponseException('Invalid milestone type.');
         }
 
@@ -78,7 +92,44 @@ final class Hydrator
             self::integer($data, 'order'),
             self::string($data, 'createdAt'),
             self::string($data, 'updatedAt'),
+            self::milestoneFields($data['fields'] ?? null),
         );
+    }
+
+    /**
+     * Absent `fields` is accepted so the SDK still reads Path servers that predate object milestones.
+     *
+     * @return list<MilestoneField>|null
+     */
+    private static function milestoneFields(mixed $value): ?array
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (!is_array($value) || !array_is_list($value)) {
+            throw new ResponseException('Invalid milestone fields.');
+        }
+
+        return array_map(static function (mixed $field): MilestoneField {
+            if (
+                !is_array($field)
+                || !is_string($field['key'] ?? null)
+                || !is_string($field['label'] ?? null)
+                || !is_string($field['fieldType'] ?? null)
+                || !isset(self::MILESTONE_FIELD_VALUE_TYPES[$field['fieldType']])
+                || !self::isNullableStringList($field['options'] ?? null)
+            ) {
+                throw new ResponseException('Invalid milestone field.');
+            }
+            return new MilestoneField(
+                $field['key'],
+                $field['label'],
+                $field['fieldType'],
+                self::MILESTONE_FIELD_VALUE_TYPES[$field['fieldType']],
+                $field['options'] ?? null,
+                $field['defaultValue'] ?? null,
+            );
+        }, $value);
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
@@ -173,12 +224,53 @@ final class Hydrator
         if ($value === null || is_bool($value) || is_int($value) || is_float($value) || is_string($value)) {
             return true;
         }
-        if (!is_array($value) || !array_is_list($value)) {
+        if (!is_array($value)) {
             return false;
+        }
+        if (!array_is_list($value)) {
+            return self::isObjectMilestoneValue($value);
         }
         foreach ($value as $item) {
             if (!is_string($item) && !is_int($item) && !is_float($item)) {
                 return false;
+            }
+        }
+        return true;
+    }
+
+    private static function isNullableStringList(mixed $value): bool
+    {
+        if ($value === null) {
+            return true;
+        }
+        if (!is_array($value) || !array_is_list($value)) {
+            return false;
+        }
+        foreach ($value as $item) {
+            if (!is_string($item)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** An `object` milestone value maps field keys to scalars, lists of strings, or null. */
+    private static function isObjectMilestoneValue(array $value): bool
+    {
+        foreach ($value as $key => $item) {
+            if (!is_string($key)) {
+                return false;
+            }
+            if ($item === null || is_string($item) || is_int($item) || is_float($item) || is_bool($item)) {
+                continue;
+            }
+            if (!is_array($item) || !array_is_list($item)) {
+                return false;
+            }
+            foreach ($item as $entry) {
+                if (!is_string($entry)) {
+                    return false;
+                }
             }
         }
         return true;

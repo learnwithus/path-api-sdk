@@ -1,4 +1,7 @@
 import type {
+  MilestoneField,
+  MilestoneFieldType,
+  MilestoneFieldValueType,
   AuthenticatedUser,
   Course,
   LearnerAttributes,
@@ -58,10 +61,64 @@ function isMilestone(value: unknown): value is Milestone {
     typeof value.courseId === "string" &&
     typeof value.title === "string" &&
     typeof value.slug === "string" &&
-    ["boolean", "string", "array", "number", "completion"].includes(String(value.type)) &&
+    ["boolean", "string", "array", "number", "object", "completion"].includes(String(value.type)) &&
+    isMilestoneFields(value.fields) &&
     typeof value.order === "number" &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
+  );
+}
+
+const FIELD_VALUE_TYPES: Record<MilestoneFieldType, MilestoneFieldValueType> = {
+  text: "string",
+  textarea: "string",
+  date: "string",
+  datetime: "string",
+  select: "string",
+  number: "number",
+  checkbox: "boolean",
+  multiselect: "string[]",
+  list: "string[]",
+};
+
+const MILESTONE_FIELD_TYPES = Object.keys(FIELD_VALUE_TYPES);
+
+function withValueTypes(fields: Omit<MilestoneField, "valueType">[] | null | undefined): MilestoneField[] | null {
+  return fields?.map((field) => ({ ...field, valueType: FIELD_VALUE_TYPES[field.fieldType] })) ?? null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+// Absent `fields` is accepted so the SDK still reads Path servers that predate object milestones.
+function isMilestoneFields(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (Array.isArray(value) &&
+      value.every(
+        (field) =>
+          isRecord(field) &&
+          typeof field.key === "string" &&
+          typeof field.label === "string" &&
+          MILESTONE_FIELD_TYPES.includes(String(field.fieldType)) &&
+          (field.options === undefined || field.options === null || isStringArray(field.options)),
+      ))
+  );
+}
+
+function isObjectMilestoneValue(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.values(value).every(
+      (item) =>
+        item === null ||
+        typeof item === "string" ||
+        typeof item === "number" ||
+        typeof item === "boolean" ||
+        isStringArray(item),
+    )
   );
 }
 
@@ -71,7 +128,8 @@ function isMilestoneValue(value: unknown): boolean {
     typeof value === "boolean" ||
     typeof value === "number" ||
     typeof value === "string" ||
-    (Array.isArray(value) && value.every((item) => typeof item === "string" || typeof item === "number"))
+    (Array.isArray(value) && value.every((item) => typeof item === "string" || typeof item === "number")) ||
+    isObjectMilestoneValue(value)
   );
 }
 
@@ -132,7 +190,7 @@ export function toLearnerState(value: unknown): LearnerState {
   return {
     user,
     course: response.course,
-    milestones: response.milestones,
+    milestones: response.milestones.map((milestone) => ({ ...milestone, fields: withValueTypes(milestone.fields) })),
     progress: response.progress,
   };
 }

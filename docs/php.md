@@ -58,6 +58,19 @@ logged-out failure behavior.
 A bare `submitProgress()` input is sent as the milestone value. Use `ProgressSubmission` when
 completeness must be supplied separately or for a data-less completion milestone.
 
+An `object` milestone lists its fields in `Milestone::$fields` as `MilestoneField` objects. Each is
+a Path data field with a `key`, `label`, and `fieldType` (`text`, `textarea`, `number`, `date`,
+`datetime`, `checkbox`, `select`, `multiselect`, or `list`), plus `options` for select fields. The
+SDK adds `valueType` (`string`, `number`, `boolean`, or `string[]`), the primitive type each field
+holds. Its value is an associative array keyed by field key:
+
+```php
+$path->submitProgress('intake-form', ['role' => 'nurse', 'years' => 4, 'units' => ['ICU']]);
+```
+
+Omitted fields are left out of the stored value, and unknown keys are rejected by Path. `fields` is
+null for every other milestone type.
+
 `getLearnerState()` intentionally catches request, authorization, server, decoding, and shape
 failures and returns the stable logged-out state. Other methods throw:
 

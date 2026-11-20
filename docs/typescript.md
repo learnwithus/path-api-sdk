@@ -31,6 +31,20 @@ await path.updateLearnerStore({ notes: "Ask about the class" });
 `user.attributes` is a read-only record whose values are strings, numbers, booleans, string arrays,
 or null. Use `Progress.complete` to determine completion; a stored value does not imply completion.
 
+An `object` milestone defines its own fields in `Milestone.fields`. Each is a Path data field with a
+`key`, `label`, and `fieldType` (`text`, `textarea`, `number`, `date`, `datetime`, `checkbox`,
+`select`, `multiselect`, or `list`), plus `options` for select fields. The SDK adds `valueType`
+(`string`, `number`, `boolean`, or `string[]`), the primitive type each field holds. Its value is an
+object keyed by field key, where `multiselect` and `list` hold string arrays and a cleared number is
+`null`, and it must be sent wrapped as `{ data }` because a bare plain object is read as the
+`{ data, complete }` payload:
+
+```ts
+await path.submitProgress("intake-form", { data: { role: "Nurse", years: 4, units: ["ICU"] } });
+```
+
+Omitted fields are left out of the stored value, and unknown keys are rejected by Path.
+
 The browser client consumes `?path-token=`, stores it in the `path_bearer_token` cookie, and removes
 only that query parameter from the address bar. The cookie uses `Path=/`, `SameSite=Lax`, is secure
 on HTTPS, and remains JavaScript-readable so browser and SSR clients can share it.

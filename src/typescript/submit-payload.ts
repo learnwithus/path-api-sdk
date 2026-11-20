@@ -8,8 +8,8 @@ import type { MilestoneValue, SubmitProgressInput, SubmitProgressPayload } from 
  * data-less `completion` milestone; for every other milestone type, a bare value is stored as data
  * and implies completeness.
  *
- * A `MilestoneValue` is never a plain (non-array) object, so any plain object is a payload. If
- * object-valued milestones are ever introduced, this discriminator must be revisited.
+ * Any plain (non-array) object is a payload, so an `object` milestone's value must be sent as
+ * `{ data: { ... } }`; a bare object would be misread as `{ data, complete }`.
  */
 export function toSubmitBody(
   milestoneSlug: string,
