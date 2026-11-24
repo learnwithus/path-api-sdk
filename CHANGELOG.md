@@ -3,6 +3,12 @@
 The npm package `@vch-lt/path` and the Composer package `vch-lt/path` share versions and release
 from the same tag.
 
+## 0.8.1
+
+- Fix `?path-token=` staying in the address bar after the Path login redirect in Nuxt apps. Nuxt's
+  router replayed the initial URL after the client plugin had removed the parameter; the plugin
+  now removes it through the router once the app has mounted.
+
 ## 0.8.0
 
 Requires a Path server that serves the learner API under `/api/v1/learner`. Path no longer answers
