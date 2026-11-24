@@ -14,6 +14,7 @@ export type {
   MilestoneFieldType,
   MilestoneFieldValue,
   MilestoneFieldValueType,
+  MilestoneValueType,
   MilestoneObjectValue,
   MilestoneValue,
   SubmitProgressInput,

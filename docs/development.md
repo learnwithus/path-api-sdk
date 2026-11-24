@@ -10,8 +10,8 @@ examples/craft/       Craft integration example
 ```
 
 There are no npm workspaces, Composer path repositories, or subtree release steps. npm publishes
-only `dist`; Composer autoloads only `src/php`. Publish npm `@vch-lt/path@0.6.2` and Composer
-`vch-lt/path:0.6.2` from the same commit and `v0.6.2` tag.
+only `dist`; Composer autoloads only `src/php`. Publish npm `@vch-lt/path@0.7.0` and Composer
+`vch-lt/path:0.7.0` from the same commit and `v0.7.0` tag.
 
 ## Commands
 

@@ -135,7 +135,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * await path.submitProgress("module-1-complete");                                  // completion milestone — done
      * await path.submitProgress("module-1-complete", false);                           // completion milestone — not done
      * await path.submitProgress("module-1-quiz", true);                                // value true, complete
-     * await path.submitProgress("module-1-checkbox", { data: false, complete: true }); // value false, complete
+     * await path.submitProgress("module-1-boolean", { data: false, complete: true });  // value false, complete
      * await path.submitProgress("reflection", { data: "draft", complete: false });     // saved but incomplete
      * await path.submitProgress("intake-form", { data: { role: "Nurse", years: 4 } });  // object milestone
      * ```
@@ -177,7 +177,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * // an object field, giving every sub-field
      * await path.updateLearnerStore({ reminder: { text: "Book follow-up", due: "2026-08-01" } });
      *
-     * // a repeatable field, replacing the whole list
+     * // an object_array field, replacing the whole list
      * await path.updateLearnerStore({
      *   bookmarks: [{ title: "Nutrition guide", url: "https://…" }],
      * });

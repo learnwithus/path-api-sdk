@@ -3,6 +3,25 @@
 The npm package `@vch-lt/path` and the Composer package `vch-lt/path` share versions and release
 from the same tag.
 
+## 0.7.0
+
+Requires a Path server whose milestones are data fields. Older servers' learner state no longer
+validates, so `getLearnerState()` returns the logged-out state against them.
+
+- Breaking: `MilestoneType` is now Path's data-field types (`text`, `textarea`, `number`, `date`,
+  `datetime`, `boolean`, `select`, `multiselect`, `text_array`, `object`, `object_array`) plus
+  `completion`. Path migrates existing milestones: `string` becomes `textarea`, `array` becomes
+  `text_array`, and `boolean` stays `boolean`.
+- Breaking: `text_array` values hold strings only. Path stores numbers already submitted to a former
+  `array` milestone as strings and rejects new numeric items.
+- Add `Milestone.valueType`, the JSON shape of a milestone's value as Path reports it (`string`,
+  `number`, `boolean`, `string[]`, `object`, or `object[]`; null for `completion`), and
+  `Milestone.options` for a `select` or `multiselect` milestone. New export: `MilestoneValueType`.
+- `MilestoneField.valueType` now comes from Path instead of an SDK-side map, and fields may be
+  `optional`.
+- Support `object_array` milestones, whose value is a list of field groups (`MilestoneObjectValue[]`).
+- PHP: `Milestone` gains `valueType` and `options`; `MilestoneField` gains `optional`.
+
 ## 0.6.2
 
 - Fix the Nuxt `usePath()` composable failing consumers' type checks with "Argument of type

@@ -26,7 +26,11 @@ export interface Milestone {
   title: string;
   slug: string;
   type: MilestoneType;
-  /** The field definitions of an `object` milestone; null for every other type. */
+  /** The JSON shape of this milestone's value, as Path reports it; null for a data-less `completion`. */
+  valueType: MilestoneValueType | null;
+  /** The choices of a `select` or `multiselect` milestone; null for every other type. */
+  options: string[] | null;
+  /** The field definitions of an `object` or `object_array` milestone; null for every other type. */
   fields: MilestoneField[] | null;
   order: number;
   createdAt: string;
@@ -76,7 +80,7 @@ export interface LearnerState {
  * @example
  * ```ts
  * // Record the value `false` but mark the milestone complete anyway.
- * await path.submitProgress("module-1-checkbox", { data: false, complete: true });
+ * await path.submitProgress("module-1-boolean", { data: false, complete: true });
  * // Equivalent to path.submitProgress("attended-orientation", false).
  * await path.submitProgress("attended-orientation", { complete: false });
  * ```
@@ -96,47 +100,55 @@ export type SubmitProgressPayload =
     };
 
 /**
- * One field value of an `object` milestone. `multiselect` and `list` fields hold string arrays,
- * `date` and `datetime` fields hold strings, and a cleared number is `null`.
+ * One field value of an `object` or `object_array` milestone. `multiselect` and `text_array` fields hold string
+ * arrays, `date` and `datetime` fields hold strings, and a cleared number is `null`.
  */
 export type MilestoneFieldValue = string | number | boolean | string[] | null;
 
-/** The value an `object` milestone holds: each filled field's key mapped to its value. */
+/** The value an `object` milestone holds, and each item of an `object_array`: each field's key mapped to its value. */
 export type MilestoneObjectValue = Record<string, MilestoneFieldValue>;
 
 /**
- * Milestone value types
+ * A milestone's value: a Path data-field value of its type. Its shape is the milestone's `valueType`.
  */
-export type MilestoneValue = boolean | number | string | Array<string | number> | MilestoneObjectValue;
+export type MilestoneValue = MilestoneFieldValue | MilestoneObjectValue | MilestoneObjectValue[];
 
-/** Milestone data shapes supported by the Path API. */
-export type MilestoneType = "boolean" | "string" | "array" | "number" | "object" | "completion";
-
-/** The data-field types an `object` milestone's fields can use. Fields are always scalar. */
+/** The data-field types an `object` or `object_array` milestone's fields can use. Fields are always scalar. */
 export type MilestoneFieldType =
   | "text"
   | "textarea"
   | "number"
   | "date"
   | "datetime"
-  | "checkbox"
+  | "boolean"
   | "select"
   | "multiselect"
-  | "list";
+  | "text_array";
+
+/**
+ * A milestone's type: any Path data-field type, the same ones a learner datastore uses, or `completion`
+ * for a milestone that records only whether it is done.
+ */
+export type MilestoneType = MilestoneFieldType | "object" | "object_array" | "completion";
 
 /** The primitive type a milestone field's value holds, apart from `null` for a cleared number. */
 export type MilestoneFieldValueType = "string" | "number" | "boolean" | "string[]";
 
-/** One field of an `object` milestone, defined like a Path data field. Values are stored under `key`. */
+/** The JSON shape a milestone's value takes: a field's primitive type, one field group, or a list of them. */
+export type MilestoneValueType = MilestoneFieldValueType | "object" | "object[]";
+
+/** One field of an `object` or `object_array` milestone, defined like a Path data field. Values are stored under `key`. */
 export interface MilestoneField {
   key: string;
   label: string;
   fieldType: MilestoneFieldType;
-  /** The primitive type of this field's value, derived by the SDK from `fieldType`. */
+  /** The primitive type of this field's value, as Path reports it. */
   valueType: MilestoneFieldValueType;
   /** The allowed choices of a `select` or `multiselect` field. */
   options?: string[] | null;
   defaultValue?: unknown;
+  /** Whether a submitted value may leave this field out. */
+  optional?: boolean;
 }
 
 /**
@@ -162,10 +174,10 @@ export type SubmitProgressInput = Exclude<MilestoneValue, MilestoneObjectValue> 
 //
 // ---------------------------------------------------------------------------
 
-/** The value of a scalar field: `text`, `textarea`, `number`, `checkbox`, `select` or `multiselect`. */
+/** The value of a scalar field: `text`, `textarea`, `number`, `date`, `datetime`, `boolean`, `select`, `multiselect`, or `text_array`. */
 export type LearnerStoreScalarValue = string | number | boolean | string[];
 
-/** The value of an `object` field, or of one entry in a `repeatable` field: one key per sub-field. */
+/** The value of an `object` field, or of one entry in an `object_array` field: one key per sub-field. */
 export type LearnerStoreObjectValue = { [key: string]: LearnerStoreScalarValue | null };
 
 /**
@@ -173,14 +185,14 @@ export type LearnerStoreObjectValue = { [key: string]: LearnerStoreScalarValue |
  *
  * | Field type                                                  | Value                                |
  * | ----------------------------------------------------------- | ------------------------------------ |
- * | `text`, `textarea`, `select`                                  | `string`                             |
- * | `number`                                                      | `number`                             |
- * | `checkbox`                                                    | `boolean`                            |
- * | `multiselect`                                                 | `string[]`                           |
- * | `object`                                                      | {@link LearnerStoreObjectValue}      |
- * | `repeatable`                                                  | {@link LearnerStoreObjectValue}`[]`  |
+ * | `text`, `textarea`, `date`, `datetime`, `select`            | `string`                             |
+ * | `number`                                                    | `number \| null`                     |
+ * | `boolean`                                                   | `boolean`                            |
+ * | `multiselect`, `text_array`                                 | `string[]`                           |
+ * | `object`                                                    | {@link LearnerStoreObjectValue}      |
+ * | `object_array`                                              | {@link LearnerStoreObjectValue}`[]`  |
  *
- * Sub-fields inside `object` and `repeatable` are always scalar — nesting is one level deep.
+ * Sub-fields inside `object` and `object_array` are always scalar — nesting is one level deep.
  */
 export type LearnerStoreValue = LearnerStoreScalarValue | null | LearnerStoreObjectValue | LearnerStoreObjectValue[];
 

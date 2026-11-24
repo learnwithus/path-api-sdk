@@ -91,7 +91,7 @@ final class PathClient
     }
 
     /**
-     * @return array<string, string|int|float|bool|list<string>|array<string, scalar|null>|list<array<string, scalar|null>>|null>
+     * @return array<string, string|int|float|bool|list<string>|array<string, scalar|list<string>|null>|list<array<string, scalar|list<string>|null>>|null>
      */
     public function getLearnerStore(): array
     {

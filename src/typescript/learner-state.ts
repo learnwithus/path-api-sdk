@@ -1,7 +1,8 @@
 import type {
-  MilestoneField,
   MilestoneFieldType,
   MilestoneFieldValueType,
+  MilestoneType,
+  MilestoneValueType,
   AuthenticatedUser,
   Course,
   LearnerAttributes,
@@ -61,7 +62,11 @@ function isMilestone(value: unknown): value is Milestone {
     typeof value.courseId === "string" &&
     typeof value.title === "string" &&
     typeof value.slug === "string" &&
-    ["boolean", "string", "array", "number", "object", "completion"].includes(String(value.type)) &&
+    MILESTONE_TYPES.includes(value.type as MilestoneType) &&
+    (value.type === "completion"
+      ? value.valueType === null
+      : MILESTONE_VALUE_TYPES.includes(value.valueType as MilestoneValueType)) &&
+    (value.options === null || isStringArray(value.options)) &&
     isMilestoneFields(value.fields) &&
     typeof value.order === "number" &&
     typeof value.createdAt === "string" &&
@@ -69,32 +74,27 @@ function isMilestone(value: unknown): value is Milestone {
   );
 }
 
-const FIELD_VALUE_TYPES: Record<MilestoneFieldType, MilestoneFieldValueType> = {
-  text: "string",
-  textarea: "string",
-  date: "string",
-  datetime: "string",
-  select: "string",
-  number: "number",
-  checkbox: "boolean",
-  multiselect: "string[]",
-  list: "string[]",
-};
-
-const MILESTONE_FIELD_TYPES = Object.keys(FIELD_VALUE_TYPES);
-
-function withValueTypes(fields: Omit<MilestoneField, "valueType">[] | null | undefined): MilestoneField[] | null {
-  return fields?.map((field) => ({ ...field, valueType: FIELD_VALUE_TYPES[field.fieldType] })) ?? null;
-}
+const MILESTONE_FIELD_TYPES: MilestoneFieldType[] = [
+  "text",
+  "textarea",
+  "number",
+  "date",
+  "datetime",
+  "boolean",
+  "select",
+  "multiselect",
+  "text_array",
+];
+const MILESTONE_TYPES: MilestoneType[] = [...MILESTONE_FIELD_TYPES, "object", "object_array", "completion"];
+const FIELD_VALUE_TYPES: MilestoneFieldValueType[] = ["string", "number", "boolean", "string[]"];
+const MILESTONE_VALUE_TYPES: MilestoneValueType[] = [...FIELD_VALUE_TYPES, "object", "object[]"];
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-// Absent `fields` is accepted so the SDK still reads Path servers that predate object milestones.
 function isMilestoneFields(value: unknown): boolean {
   return (
-    value === undefined ||
     value === null ||
     (Array.isArray(value) &&
       value.every(
@@ -102,8 +102,10 @@ function isMilestoneFields(value: unknown): boolean {
           isRecord(field) &&
           typeof field.key === "string" &&
           typeof field.label === "string" &&
-          MILESTONE_FIELD_TYPES.includes(String(field.fieldType)) &&
-          (field.options === undefined || field.options === null || isStringArray(field.options)),
+          MILESTONE_FIELD_TYPES.includes(field.fieldType as MilestoneFieldType) &&
+          FIELD_VALUE_TYPES.includes(field.valueType as MilestoneFieldValueType) &&
+          (field.options === undefined || field.options === null || isStringArray(field.options)) &&
+          (field.optional === undefined || typeof field.optional === "boolean"),
       ))
   );
 }
@@ -122,13 +124,15 @@ function isObjectMilestoneValue(value: unknown): boolean {
   );
 }
 
+/** A data-field value: a scalar, a list of strings, one field group, or a list of field groups. */
 function isMilestoneValue(value: unknown): boolean {
   return (
     value === null ||
     typeof value === "boolean" ||
     typeof value === "number" ||
     typeof value === "string" ||
-    (Array.isArray(value) && value.every((item) => typeof item === "string" || typeof item === "number")) ||
+    isStringArray(value) ||
+    (Array.isArray(value) && value.every(isObjectMilestoneValue)) ||
     isObjectMilestoneValue(value)
   );
 }
@@ -190,7 +194,7 @@ export function toLearnerState(value: unknown): LearnerState {
   return {
     user,
     course: response.course,
-    milestones: response.milestones.map((milestone) => ({ ...milestone, fields: withValueTypes(milestone.fields) })),
+    milestones: response.milestones,
     progress: response.progress,
   };
 }

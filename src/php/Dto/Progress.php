@@ -7,7 +7,7 @@ namespace VchLt\Path\Dto;
 final class Progress
 {
     /**
-     * @param bool|int|float|string|list<string|int|float>|null $value
+     * @param bool|int|float|string|list<string>|array<string, bool|int|float|string|list<string>|null>|list<array<string, bool|int|float|string|list<string>|null>>|null $value
      */
     public function __construct(
         public readonly int $id,

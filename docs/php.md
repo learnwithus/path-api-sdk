@@ -58,18 +58,22 @@ logged-out failure behavior.
 A bare `submitProgress()` input is sent as the milestone value. Use `ProgressSubmission` when
 completeness must be supplied separately or for a data-less completion milestone.
 
-An `object` milestone lists its fields in `Milestone::$fields` as `MilestoneField` objects. Each is
-a Path data field with a `key`, `label`, and `fieldType` (`text`, `textarea`, `number`, `date`,
-`datetime`, `checkbox`, `select`, `multiselect`, or `list`), plus `options` for select fields. The
-SDK adds `valueType` (`string`, `number`, `boolean`, or `string[]`), the primitive type each field
-holds. Its value is an associative array keyed by field key:
+A milestone's value is a Path data field of its `type`. `Milestone::$valueType` is its JSON shape as
+Path reports it (`string`, `number`, `boolean`, `string[]`, `object`, or `object[]`; null for a
+data-less `completion`), and `Milestone::$options` lists a `select` or `multiselect` milestone's
+choices.
+
+An `object` or `object_array` milestone lists its fields in `Milestone::$fields` as `MilestoneField`
+objects. Each is a scalar Path data field with a `key`, `label`, `fieldType`, `valueType`, and
+`optional`, plus `options` for select fields. An `object` value is an associative array keyed by
+field key, and an `object_array` value a list of them:
 
 ```php
 $path->submitProgress('intake-form', ['role' => 'nurse', 'years' => 4, 'units' => ['ICU']]);
 ```
 
-Omitted fields are left out of the stored value, and unknown keys are rejected by Path. `fields` is
-null for every other milestone type.
+Unknown keys are rejected by Path, and so is a value that leaves out a field not marked `optional`.
+`fields` is null for every other milestone type.
 
 `getLearnerState()` intentionally catches request, authorization, server, decoding, and shape
 failures and returns the stable logged-out state. Other methods throw:
@@ -81,5 +85,5 @@ failures and returns the stable logged-out state. Other methods throw:
 When a response includes `set-auth-token`, the supplied `TokenStorageInterface` receives it before
 the HTTP status is evaluated. A successful `logout()` clears that token storage.
 
-Learner-store values are arrays containing scalar, object, repeatable-object, and map shapes. The
+Learner-store values are arrays containing scalar, object, `object_array`, and map shapes. The
 store is never loaded by `getLearnerState()`.

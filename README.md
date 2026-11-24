@@ -12,9 +12,14 @@ Both languages expose the same primary operations:
 - The authenticated user's read-only course attributes are at `user.attributes`.
 - Learner-store data is fetched separately and only when requested.
 - Progress is looked up by milestone slug with `getProgress(state, slug)`.
-- An `object` milestone records a group of named values. Its `fields` list each field's `key`,
-  `label`, Path `fieldType`, and SDK-derived primitive `valueType` (`string`, `number`, `boolean`,
-  or `string[]`). Its progress value is an object keyed by field. `fields` is null for other types.
+- A milestone's `type` is a Path data-field type (`text`, `textarea`, `number`, `date`, `datetime`,
+  `boolean`, `select`, `multiselect`, `text_array`, `object`, `object_array`) or `completion`, which
+  records no value. Path reports each milestone's `valueType`, the JSON shape of its value (`string`,
+  `number`, `boolean`, `string[]`, `object`, or `object[]`; null for `completion`). A `select` or
+  `multiselect` milestone lists its choices in `options`.
+- An `object` milestone records a group of named values, and an `object_array` milestone a list of
+  such groups. Their `fields` list each field's `key`, `label`, Path `fieldType`, and `valueType`.
+  `fields` is null for other types.
 
 The Path wire response places `attributes` at its root. Each SDK moves those values onto the
 authenticated user. If any learner-state request, authorization, server, network, decoding, or
