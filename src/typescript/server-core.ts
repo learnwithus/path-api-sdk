@@ -75,7 +75,7 @@ export function createServerSDK(
   const getLearnerState = async (): Promise<LearnerState> => {
     try {
       const response = await serverFetch<LearnerOverviewResponse>(
-        `${pathUrl}/api/learner?courseId=${courseId}`,
+        `${pathUrl}/api/v1/learner?courseId=${courseId}`,
         currentToken,
         handleTokenChange,
       );
@@ -123,7 +123,7 @@ export function createServerSDK(
      * milestone's value must always be wrapped as `{ data: { ... } }`.
      */
     submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput): Promise<Progress> => {
-      return serverFetch<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, currentToken, handleTokenChange, {
+      return serverFetch<Progress>(`${pathUrl}/api/v1/learner?courseId=${courseId}`, currentToken, handleTokenChange, {
         method: "POST",
         body: toSubmitBody(milestoneSlug, valueOrPayload),
       });
@@ -132,7 +132,7 @@ export function createServerSDK(
     /** Get the learner's stored values, keyed by field key. */
     getLearnerStore: async (): Promise<LearnerStore> => {
       return serverFetch<LearnerStore>(
-        `${pathUrl}/api/learner/store?courseId=${courseId}`,
+        `${pathUrl}/api/v1/learner/store?courseId=${courseId}`,
         currentToken,
         handleTokenChange,
       );
@@ -144,7 +144,7 @@ export function createServerSDK(
      */
     updateLearnerStore: async (values: LearnerStore): Promise<LearnerStore> => {
       return serverFetch<LearnerStore>(
-        `${pathUrl}/api/learner/store?courseId=${courseId}`,
+        `${pathUrl}/api/v1/learner/store?courseId=${courseId}`,
         currentToken,
         handleTokenChange,
         {
@@ -156,7 +156,7 @@ export function createServerSDK(
 
     /** End the Path session, then tell the host application to clear its local bearer token. */
     logout: async (): Promise<void> => {
-      await serverFetch(`${pathUrl}/api/learner/logout?courseId=${courseId}`, currentToken, handleTokenChange, {
+      await serverFetch(`${pathUrl}/api/v1/learner/logout?courseId=${courseId}`, currentToken, handleTokenChange, {
         method: "POST",
       });
       await handleTokenChange(null);
