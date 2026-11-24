@@ -86,7 +86,7 @@ export function pathSDK(config: LearnerAPIConfig) {
 
   const getLearnerState = async (): Promise<LearnerState> => {
     try {
-      const response = await apiRequest<LearnerOverviewResponse>(`${pathUrl}/api/learner?courseId=${courseId}`);
+      const response = await apiRequest<LearnerOverviewResponse>(`${pathUrl}/api/v1/learner?courseId=${courseId}`);
       return toLearnerState(response);
     } catch {
       return emptyLearnerState();
@@ -117,7 +117,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * Logout the current user and clear the stored token
      */
     logout: async (): Promise<void> => {
-      await apiRequest(`${pathUrl}/api/learner/logout?courseId=${courseId}`, { method: "POST" });
+      await apiRequest(`${pathUrl}/api/v1/learner/logout?courseId=${courseId}`, { method: "POST" });
       setToken(null);
     },
 
@@ -141,7 +141,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * ```
      */
     submitProgress: async (milestoneSlug: string, valueOrPayload?: SubmitProgressInput): Promise<Progress> => {
-      return await apiRequest<Progress>(`${pathUrl}/api/learner?courseId=${courseId}`, {
+      return await apiRequest<Progress>(`${pathUrl}/api/v1/learner?courseId=${courseId}`, {
         method: "POST",
         body: toSubmitBody(milestoneSlug, valueOrPayload),
       });
@@ -160,7 +160,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * ```
      */
     getLearnerStore: async (): Promise<LearnerStore> => {
-      return await apiRequest<LearnerStore>(`${pathUrl}/api/learner/store?courseId=${courseId}`);
+      return await apiRequest<LearnerStore>(`${pathUrl}/api/v1/learner/store?courseId=${courseId}`);
     },
 
     /**
@@ -184,7 +184,7 @@ export function pathSDK(config: LearnerAPIConfig) {
      * ```
      */
     updateLearnerStore: async (values: LearnerStore): Promise<LearnerStore> => {
-      return await apiRequest<LearnerStore>(`${pathUrl}/api/learner/store?courseId=${courseId}`, {
+      return await apiRequest<LearnerStore>(`${pathUrl}/api/v1/learner/store?courseId=${courseId}`, {
         method: "POST",
         body: { values },
       });

@@ -3,6 +3,14 @@
 The npm package `@vch-lt/path` and the Composer package `vch-lt/path` share versions and release
 from the same tag.
 
+## 0.8.0
+
+Requires a Path server that serves the learner API under `/api/v1/learner`. Path no longer answers
+the old `/api/learner` routes, so earlier SDK versions stop working against it.
+
+- Breaking: every learner request (state, progress, store, and sign-out) now goes to
+  `/api/v1/learner/**`. The SDK's own API is unchanged; upgrade the package and redeploy.
+
 ## 0.7.0
 
 Requires a Path server whose milestones are data fields. Older servers' learner state no longer

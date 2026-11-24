@@ -47,7 +47,7 @@ final class PathClient
     public function getLearnerState(): LearnerState
     {
         try {
-            return Hydrator::learnerState($this->requestJson('GET', '/api/learner'));
+            return Hydrator::learnerState($this->requestJson('GET', '/api/v1/learner'));
         } catch (\Throwable) {
             return LearnerState::loggedOut();
         }
@@ -87,7 +87,7 @@ final class PathClient
             $body['value'] = $input;
         }
 
-        return Hydrator::progress($this->requestJson('POST', '/api/learner', $body));
+        return Hydrator::progress($this->requestJson('POST', '/api/v1/learner', $body));
     }
 
     /**
@@ -95,7 +95,7 @@ final class PathClient
      */
     public function getLearnerStore(): array
     {
-        return LearnerStoreValidator::validate($this->requestJson('GET', '/api/learner/store'));
+        return LearnerStoreValidator::validate($this->requestJson('GET', '/api/v1/learner/store'));
     }
 
     /**
@@ -105,13 +105,13 @@ final class PathClient
     public function updateLearnerStore(array $values): array
     {
         return LearnerStoreValidator::validate(
-            $this->requestJson('POST', '/api/learner/store', ['values' => $values]),
+            $this->requestJson('POST', '/api/v1/learner/store', ['values' => $values]),
         );
     }
 
     public function logout(): void
     {
-        $this->request('POST', '/api/learner/logout');
+        $this->request('POST', '/api/v1/learner/logout');
         $this->tokenStorage->setToken(null);
     }
 
