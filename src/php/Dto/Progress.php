@@ -20,6 +20,7 @@ final class Progress
         public readonly ?string $updatedByName,
         public readonly string $createdAt,
         public readonly string $updatedAt,
+        public readonly ?MilestoneFlag $flag = null,
     ) {
     }
 }

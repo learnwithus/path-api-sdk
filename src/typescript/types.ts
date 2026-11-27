@@ -37,6 +37,15 @@ export interface Milestone {
   updatedAt: string;
 }
 
+/** Severity level of a milestone progress flag. */
+export type MilestoneFlagLevel = "info" | "warning" | "critical";
+
+/** Optional open-ended flag attached to a milestone progress submission. */
+export interface MilestoneFlag {
+  level: MilestoneFlagLevel;
+  message: string;
+}
+
 /**
  * Progress record for a milestone
  */
@@ -48,6 +57,8 @@ export interface Progress {
   value: MilestoneValue | null;
   /** Whether this submission marks the milestone complete. */
   complete: boolean;
+  /** Optional flag attached to this submission, or null when unflagged. */
+  flag: MilestoneFlag | null;
   updatedBy: string | null;
   milestoneSlug: string;
   updatedByName: string | null;
@@ -75,7 +86,7 @@ export interface LearnerState {
 }
 
 /**
- * Payload form for `submitProgress`, to send a value and its completeness together.
+ * Payload form for `submitProgress`, to send a value, completeness, and an optional flag together.
  *
  * @example
  * ```ts
@@ -83,6 +94,12 @@ export interface LearnerState {
  * await path.submitProgress("module-1-boolean", { data: false, complete: true });
  * // Equivalent to path.submitProgress("attended-orientation", false).
  * await path.submitProgress("attended-orientation", { complete: false });
+ * // Attach a warning flag; omitting `flag` (or passing `null`) on a later submission clears it.
+ * await path.submitProgress("quiz-1", {
+ *   data: 40,
+ *   complete: false,
+ *   flag: { level: "warning", message: "Failed 3 attempts" },
+ * });
  * ```
  */
 export type SubmitProgressPayload =
@@ -91,12 +108,16 @@ export type SubmitProgressPayload =
       data: MilestoneValue;
       /** Whether the milestone is complete. When omitted, the submission is treated as complete. */
       complete?: boolean;
+      /** Optional flag attached to this submission. Omit or pass `null` to clear any prior flag. */
+      flag?: MilestoneFlag | null;
     }
   | {
       /** Completion milestones carry no data. */
       data?: never;
       /** Whether the completion milestone is complete. When omitted, it is treated as complete. */
       complete?: boolean;
+      /** Optional flag attached to this submission. Omit or pass `null` to clear any prior flag. */
+      flag?: MilestoneFlag | null;
     };
 
 /**
