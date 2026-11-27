@@ -9,6 +9,7 @@ use VchLt\Path\Dto\Course;
 use VchLt\Path\Dto\LearnerState;
 use VchLt\Path\Dto\Milestone;
 use VchLt\Path\Dto\MilestoneField;
+use VchLt\Path\Dto\MilestoneFlag;
 use VchLt\Path\Dto\Progress;
 use VchLt\Path\Exception\ResponseException;
 
@@ -27,6 +28,13 @@ final class Hydrator
 
     /** The JSON shapes Path reports as a milestone's or field's `valueType`. */
     private const VALUE_TYPES = ['string', 'number', 'boolean', 'string[]', 'object', 'object[]'];
+
+    /** Allowed severity levels for a milestone progress flag. */
+    private const MILESTONE_FLAG_LEVELS = [
+        MilestoneFlag::LEVEL_INFO,
+        MilestoneFlag::LEVEL_WARNING,
+        MilestoneFlag::LEVEL_CRITICAL,
+    ];
 
     /** @param array<string, mixed> $data */
     public static function learnerState(array $data): LearnerState
@@ -73,7 +81,25 @@ final class Hydrator
             self::nullableString($data, 'updatedByName'),
             self::string($data, 'createdAt'),
             self::string($data, 'updatedAt'),
+            self::milestoneFlag($data['flag'] ?? null),
         );
+    }
+
+    private static function milestoneFlag(mixed $value): ?MilestoneFlag
+    {
+        if ($value === null) {
+            return null;
+        }
+        if (
+            !is_array($value)
+            || array_is_list($value)
+            || !in_array($value['level'] ?? null, self::MILESTONE_FLAG_LEVELS, true)
+            || !is_string($value['message'] ?? null)
+        ) {
+            throw new ResponseException('Invalid milestone flag.');
+        }
+
+        return new MilestoneFlag($value['level'], $value['message']);
     }
 
     /** @param array<string, mixed> $data */

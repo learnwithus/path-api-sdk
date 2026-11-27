@@ -83,6 +83,12 @@ final class PathClient
             if ($input->complete !== null) {
                 $body['complete'] = $input->complete;
             }
+            if ($input->flag !== null) {
+                $body['flag'] = [
+                    'level' => $input->flag->level,
+                    'message' => $input->flag->message,
+                ];
+            }
         } elseif ($input !== null) {
             $body['value'] = $input;
         }

@@ -56,7 +56,10 @@ logged-out failure behavior.
 - `getProgress(LearnerState $state, string $milestoneSlug): ?Progress`
 
 A bare `submitProgress()` input is sent as the milestone value. Use `ProgressSubmission` when
-completeness must be supplied separately or for a data-less completion milestone.
+completeness or an optional `MilestoneFlag` (`info`, `warning`, or `critical` with a message) must
+be supplied separately, or for a data-less completion milestone. Omitting the flag on a later
+submission clears any prior flag on that milestone; `Progress::$flag` holds the latest flag or
+`null`.
 
 A milestone's value is a Path data field of its `type`. `Milestone::$valueType` is its JSON shape as
 Path reports it (`string`, `number`, `boolean`, `string[]`, `object`, or `object[]`; null for a

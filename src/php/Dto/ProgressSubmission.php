@@ -10,17 +10,18 @@ final class ProgressSubmission
         private readonly bool $hasData,
         public readonly mixed $data,
         public readonly ?bool $complete,
+        public readonly ?MilestoneFlag $flag = null,
     ) {
     }
 
-    public static function withData(mixed $data, ?bool $complete = null): self
+    public static function withData(mixed $data, ?bool $complete = null, ?MilestoneFlag $flag = null): self
     {
-        return new self(true, $data, $complete);
+        return new self(true, $data, $complete, $flag);
     }
 
-    public static function completion(?bool $complete = null): self
+    public static function completion(?bool $complete = null, ?MilestoneFlag $flag = null): self
     {
-        return new self(false, null, $complete);
+        return new self(false, null, $complete, $flag);
     }
 
     public function hasData(): bool
