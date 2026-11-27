@@ -30,6 +30,9 @@ await path.updateLearnerStore({ notes: "Ask about the class" });
 `getLearnerState()` returns the flattened state described in the [root README](../README.md).
 `user.attributes` is a read-only record whose values are strings, numbers, booleans, string arrays,
 or null. Use `Progress.complete` to determine completion; a stored value does not imply completion.
+`Progress.flag` holds an optional `{ level: "info" | "warning" | "critical", message: string }`
+attached to the latest submission (or `null`); pass `flag` in the `submitProgress` payload to set
+it, and omit it or pass `null` on a later submission to clear it.
 
 A milestone's value is a Path data field of its `type`, and `Milestone.valueType` is its JSON shape as
 Path reports it: `string` for `text`, `textarea`, `date`, `datetime`, and `select`; `number`;

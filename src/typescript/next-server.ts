@@ -22,6 +22,8 @@ export type {
   MilestoneValueType,
   MilestoneObjectValue,
   MilestoneValue,
+  MilestoneFlag,
+  MilestoneFlagLevel,
   SubmitProgressInput,
   SubmitProgressPayload,
 } from "./types.js";

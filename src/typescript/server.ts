@@ -17,6 +17,8 @@ export type {
   MilestoneValueType,
   MilestoneObjectValue,
   MilestoneValue,
+  MilestoneFlag,
+  MilestoneFlagLevel,
   SubmitProgressInput,
   SubmitProgressPayload,
   LearnerStore,

@@ -1,6 +1,8 @@
 import type {
   MilestoneFieldType,
   MilestoneFieldValueType,
+  MilestoneFlag,
+  MilestoneFlagLevel,
   MilestoneType,
   MilestoneValueType,
   AuthenticatedUser,
@@ -137,6 +139,16 @@ function isMilestoneValue(value: unknown): boolean {
   );
 }
 
+const MILESTONE_FLAG_LEVELS: MilestoneFlagLevel[] = ["info", "warning", "critical"];
+
+function isMilestoneFlag(value: unknown): value is MilestoneFlag {
+  return (
+    isRecord(value) &&
+    MILESTONE_FLAG_LEVELS.includes(value.level as MilestoneFlagLevel) &&
+    typeof value.message === "string"
+  );
+}
+
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
@@ -149,6 +161,7 @@ function isProgress(value: unknown): value is Progress {
     typeof value.courseMilestoneId === "number" &&
     isMilestoneValue(value.value) &&
     typeof value.complete === "boolean" &&
+    (value.flag === undefined || value.flag === null || isMilestoneFlag(value.flag)) &&
     isNullableString(value.updatedBy) &&
     typeof value.milestoneSlug === "string" &&
     isNullableString(value.updatedByName) &&
@@ -195,6 +208,6 @@ export function toLearnerState(value: unknown): LearnerState {
     user,
     course: response.course,
     milestones: response.milestones,
-    progress: response.progress,
+    progress: response.progress.map((entry) => ({ ...entry, flag: entry.flag ?? null })),
   };
 }
